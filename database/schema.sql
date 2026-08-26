@@ -77,9 +77,11 @@ CREATE TABLE users (
 
     employee_id INTEGER UNIQUE NOT NULL,
 
-    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
 
-    password_hash VARCHAR(255) NOT NULL,
+    oauth_provider VARCHAR(50) NOT NULL DEFAULT 'google',
+
+    oauth_subject VARCHAR(255),
 
     role VARCHAR(20) NOT NULL,
 
@@ -90,16 +92,14 @@ CREATE TABLE users (
         REFERENCES employee(employee_id),
 
     CONSTRAINT chk_user_role
-        CHECK (
-            role IN ('ADMIN', 'EMPLOYEE')
-        ),
+        CHECK (role IN ('ADMIN', 'EMPLOYEE')),
 
     CONSTRAINT chk_user_status
-        CHECK (
-            status IN ('ACTIVE', 'INACTIVE')
-        )
-);
+        CHECK (status IN ('ACTIVE', 'INACTIVE')),
 
+    CONSTRAINT uq_oauth_identity
+        UNIQUE (oauth_provider, oauth_subject)
+);
 
 
 -- 4. ATTENDANCE DEVICE
