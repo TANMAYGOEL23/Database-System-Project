@@ -1,12 +1,12 @@
--- ============================================================
+
 -- SMART INDUSTRIAL ERP
 -- Database Systems Project
 -- PostgreSQL
--- ============================================================
 
--- ============================================================
+
+
 -- 1. DEPARTMENT
--- ============================================================
+
 
 CREATE TABLE department (
     department_id SERIAL PRIMARY KEY,
@@ -15,9 +15,9 @@ CREATE TABLE department (
 );
 
 
--- ============================================================
+
 -- 2. EMPLOYEE
--- ============================================================
+
 
 CREATE TABLE employee (
     employee_id SERIAL PRIMARY KEY,
@@ -62,15 +62,15 @@ FOREIGN KEY (manager_id)
 REFERENCES employee(employee_id);
 
 
--- ============================================================
+
 -- 3. USERS
--- ============================================================
+
 -- Single authentication table as required by the assignment.
 --
 -- Roles:
 -- ADMIN
 -- EMPLOYEE
--- ============================================================
+
 
 CREATE TABLE users (
     user_id SERIAL PRIMARY KEY,
@@ -101,9 +101,9 @@ CREATE TABLE users (
 );
 
 
--- ============================================================
+
 -- 4. ATTENDANCE DEVICE
--- ============================================================
+
 
 CREATE TABLE attendance_device (
     device_id SERIAL PRIMARY KEY,
@@ -123,9 +123,9 @@ CREATE TABLE attendance_device (
 );
 
 
--- ============================================================
+
 -- 5. ATTENDANCE
--- ============================================================
+
 
 CREATE TABLE attendance (
     attendance_id SERIAL PRIMARY KEY,
@@ -160,9 +160,9 @@ CREATE TABLE attendance (
 );
 
 
--- ============================================================
+
 -- 6. PAYROLL
--- ============================================================
+
 
 CREATE TABLE payroll (
     payroll_id SERIAL PRIMARY KEY,
@@ -192,9 +192,9 @@ CREATE TABLE payroll (
 );
 
 
--- ============================================================
+
 -- 7. PRODUCT
--- ============================================================
+
 
 CREATE TABLE product (
     product_id SERIAL PRIMARY KEY,
@@ -215,9 +215,9 @@ CREATE TABLE product (
 );
 
 
--- ============================================================
+
 -- 8. WAREHOUSE
--- ============================================================
+
 
 CREATE TABLE warehouse (
     warehouse_id SERIAL PRIMARY KEY,
@@ -231,9 +231,9 @@ CREATE TABLE warehouse (
 );
 
 
--- ============================================================
+
 -- 9. SHELF
--- ============================================================
+
 
 CREATE TABLE shelf (
     shelf_id SERIAL PRIMARY KEY,
@@ -261,9 +261,9 @@ CREATE TABLE shelf (
 );
 
 
--- ============================================================
+
 -- 10. INVENTORY
--- ============================================================
+
 
 CREATE TABLE inventory (
     inventory_id SERIAL PRIMARY KEY,
@@ -300,9 +300,9 @@ CREATE TABLE inventory (
 );
 
 
--- ============================================================
+
 -- 11. STOCK TRANSACTION
--- ============================================================
+
 
 CREATE TABLE stock_transaction (
     transaction_id SERIAL PRIMARY KEY,
@@ -342,9 +342,9 @@ CREATE TABLE stock_transaction (
 );
 
 
--- ============================================================
+
 -- 12. SUPPLIER
--- ============================================================
+
 
 CREATE TABLE supplier (
     supplier_id SERIAL PRIMARY KEY,
@@ -361,9 +361,9 @@ CREATE TABLE supplier (
 );
 
 
--- ============================================================
+
 -- 13. PURCHASE ORDER
--- ============================================================
+
 
 CREATE TABLE purchase_order (
     purchase_order_id SERIAL PRIMARY KEY,
@@ -393,9 +393,9 @@ CREATE TABLE purchase_order (
 );
 
 
--- ============================================================
+
 -- 14. PURCHASE ORDER ITEM
--- ============================================================
+
 
 CREATE TABLE purchase_order_item (
     purchase_order_item_id SERIAL PRIMARY KEY,
@@ -421,9 +421,9 @@ CREATE TABLE purchase_order_item (
 );
 
 
--- ============================================================
+
 -- 15. MACHINE
--- ============================================================
+
 
 CREATE TABLE machine (
     machine_id SERIAL PRIMARY KEY,
@@ -446,9 +446,9 @@ CREATE TABLE machine (
 );
 
 
--- ============================================================
+
 -- 16. PRODUCTION ORDER
--- ============================================================
+
 
 CREATE TABLE production_order (
     production_order_id SERIAL PRIMARY KEY,
@@ -493,9 +493,9 @@ CREATE TABLE production_order (
 );
 
 
--- ============================================================
+
 -- 17. PRODUCTION LOG
--- ============================================================
+
 
 CREATE TABLE production_log (
     production_log_id SERIAL PRIMARY KEY,
@@ -519,9 +519,9 @@ CREATE TABLE production_log (
 );
 
 
--- ============================================================
+
 -- 18. ROBOT
--- ============================================================
+
 
 CREATE TABLE robot (
     robot_id SERIAL PRIMARY KEY,
@@ -551,9 +551,9 @@ CREATE TABLE robot (
 );
 
 
--- ============================================================
+
 -- 19. ROBOT TASK
--- ============================================================
+
 
 CREATE TABLE robot_task (
     task_id SERIAL PRIMARY KEY,
@@ -607,9 +607,9 @@ CREATE TABLE robot_task (
 );
 
 
--- ============================================================
+
 -- 20. SENSOR
--- ============================================================
+
 
 CREATE TABLE sensor (
     sensor_id SERIAL PRIMARY KEY,
@@ -627,9 +627,9 @@ CREATE TABLE sensor (
 );
 
 
--- ============================================================
+
 -- 21. SENSOR DATA
--- ============================================================
+
 
 CREATE TABLE sensor_data (
     reading_id BIGSERIAL PRIMARY KEY,
@@ -648,9 +648,9 @@ CREATE TABLE sensor_data (
 );
 
 
--- ============================================================
+
 -- 22. ALERT
--- ============================================================
+
 
 CREATE TABLE alert (
     alert_id SERIAL PRIMARY KEY,
@@ -679,9 +679,9 @@ CREATE TABLE alert (
 );
 
 
--- ============================================================
+
 -- 23. CUSTOMER
--- ============================================================
+
 
 CREATE TABLE customer (
     customer_id SERIAL PRIMARY KEY,
@@ -696,9 +696,9 @@ CREATE TABLE customer (
 );
 
 
--- ============================================================
+
 -- 24. INVOICE
--- ============================================================
+
 
 CREATE TABLE invoice (
     invoice_id SERIAL PRIMARY KEY,
@@ -720,9 +720,9 @@ CREATE TABLE invoice (
 );
 
 
--- ============================================================
+
 -- 25. INVOICE ITEM
--- ============================================================
+
 
 CREATE TABLE invoice_item (
     invoice_item_id SERIAL PRIMARY KEY,
@@ -748,9 +748,9 @@ CREATE TABLE invoice_item (
 );
 
 
--- ============================================================
+
 -- 26. ACCOUNT
--- ============================================================
+
 
 CREATE TABLE account (
     account_id SERIAL PRIMARY KEY,
@@ -772,9 +772,9 @@ CREATE TABLE account (
 );
 
 
--- ============================================================
+
 -- 27. JOURNAL ENTRY
--- ============================================================
+
 
 CREATE TABLE journal_entry (
     journal_entry_id SERIAL PRIMARY KEY,
@@ -785,9 +785,9 @@ CREATE TABLE journal_entry (
 );
 
 
--- ============================================================
+
 -- 28. JOURNAL ENTRY LINE
--- ============================================================
+
 
 CREATE TABLE journal_entry_line (
     line_id SERIAL PRIMARY KEY,
@@ -820,9 +820,9 @@ CREATE TABLE journal_entry_line (
 );
 
 
--- ============================================================
+
 -- 29. EXPENSE
--- ============================================================
+
 
 CREATE TABLE expense (
     expense_id SERIAL PRIMARY KEY,
@@ -842,9 +842,9 @@ CREATE TABLE expense (
 );
 
 
--- ============================================================
+
 -- INDEXES
--- ============================================================
+
 
 CREATE INDEX idx_employee_department
 ON employee(department_id);
@@ -907,9 +907,9 @@ CREATE INDEX idx_users_role
 ON users(role);
 
 
--- ============================================================
+
 -- VIEWS
--- ============================================================
+
 
 -- View 1: Low stock products
 
@@ -962,9 +962,9 @@ JOIN customer c
     ON i.customer_id = c.customer_id;
 
 
--- ============================================================
+
 -- TRIGGER
--- ============================================================
+
 
 -- Trigger function:
 -- Whenever inventory becomes equal to or lower than
@@ -1008,9 +1008,9 @@ FOR EACH ROW
 EXECUTE FUNCTION create_low_stock_alert();
 
 
--- ============================================================
+
 -- STORED PROCEDURE
--- ============================================================
+
 
 -- Receives a purchase order and updates its status.
 --
