@@ -32,11 +32,11 @@ VALUES
      '9876500001', 'ashishchoudhary29006@gmail.com',
      'Bangalore', 75000.00, '2023-01-10', 'ACTIVE'),
 
-    (2, 2, 'Rahul', 'Verma', 'Male',
-     '9876500002', 'rahul.verma@factory.com',
+    (2, 2, 'Rohit', 'Chaurasiya', 'Male',
+     '9876500002', 'rohitchaurasiya143265@gmail.com',
      'Bangalore', 65000.00, '2023-03-15', 'ACTIVE'),
 
-    (3, 3, 'Prisha', 'Ajit', 'Female',
+    (3, 3, 'Tanmay', 'Goel', 'Male',
      '9876500003', 'prishaajit@gmail.com',
      'Bangalore', 48000.00, '2024-01-08', 'ACTIVE'),
 
@@ -117,7 +117,17 @@ VALUES
         NULL,
         'EMPLOYEE',
         'ACTIVE'
-    );
+    ),
+    (
+        3,
+        4,
+        'rohitchaurasiya143265@gmail.com',
+        'google',
+        NULL,
+        'EMPLOYEE',
+        'ACTIVE'
+    )
+    ;
 
 
 -- ATTENDANCE DEVICES
