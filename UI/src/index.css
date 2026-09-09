@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-bg-primary: #0b1120;
+    --color-bg-secondary: #0f172a;
+    --color-bg-card: #1e293b;
+    --color-border: #334155;
+    --color-accent: #2563eb;
+  }
+
+  body {
+    @apply bg-slate-950 text-slate-100 font-sans antialiased selection:bg-blue-600 selection:text-white;
+  }
+
+  /* Custom subtle scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #0f172a;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+  }
+}
+
+@layer utilities {
+  .industrial-grid-bg {
+    background-image: radial-gradient(rgba(51, 65, 85, 0.4) 1px, transparent 0);
+    background-size: 24px 24px;
+  }
+
+  .glass-panel {
+    background-color: rgba(30, 41, 59, 0.85);
+    backdrop-filter: blur(8px);
+  }
+}
+
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.02); }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 3s ease-in-out infinite;
+}
