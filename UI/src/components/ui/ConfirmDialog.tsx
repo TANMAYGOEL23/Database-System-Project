@@ -1,9 +1,9 @@
 import React from 'react';
-import { AlertTriangle } from 'lucide-react';
 import { Modal } from './Modal';
 import { Button } from './Button';
+import { AlertTriangle } from 'lucide-react';
 
-interface ConfirmDialogProps {
+export interface ConfirmDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
@@ -11,7 +11,7 @@ interface ConfirmDialogProps {
   message: string;
   confirmText?: string;
   cancelText?: string;
-  variant?: 'danger' | 'primary';
+  variant?: 'danger' | 'primary' | 'success';
   isLoading?: boolean;
 }
 
@@ -31,21 +31,16 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title={title}
-      maxWidth="md"
-      icon={<AlertTriangle className="w-5 h-5 text-rose-400" />}
+      maxWidth="sm"
+      icon={<AlertTriangle className="w-5 h-5 text-amber-400" />}
     >
-      <div className="space-y-4">
+      <div className="space-y-5">
         <p className="text-sm text-slate-300 leading-relaxed">{message}</p>
         <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
-          <Button variant="secondary" size="md" onClick={onClose} disabled={isLoading}>
+          <Button variant="secondary" onClick={onClose} disabled={isLoading}>
             {cancelText}
           </Button>
-          <Button
-            variant={variant}
-            size="md"
-            onClick={onConfirm}
-            isLoading={isLoading}
-          >
+          <Button variant={variant} onClick={onConfirm} isLoading={isLoading}>
             {confirmText}
           </Button>
         </div>

@@ -1,44 +1,34 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Receipt, Eye, Edit2, Trash2, Download, DollarSign, Calendar } from 'lucide-react';
+import { Plus, Receipt, DollarSign, Calendar, Eye, Printer, CheckCircle2 } from 'lucide-react';
 import { DataTable, Column, FilterConfig } from '../../components/tables/DataTable';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
-import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useNotification } from '../../context/NotificationContext';
-import { useAuth } from '../../context/AuthContext';
 import { payrollService } from '../../services/payrollService';
 import { employeeService } from '../../services/employeeService';
-import { Payroll, Employee, PayrollStatus } from '../../types/hr';
+import { Payroll, Employee } from '../../types/hr';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 
 export const PayrollPage: React.FC = () => {
-  const { user, isAdmin } = useAuth();
   const [payrolls, setPayrolls] = useState<Payroll[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Modals
-  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isGenerateOpen, setIsGenerateOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-
   const [selectedPayroll, setSelectedPayroll] = useState<Payroll | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
     employeeId: '',
-    month: '2026-08',
-    year: 2026,
-    basicSalary: '6500',
+    month: 'September',
+    year: '2026',
     bonus: '500',
-    deduction: '600',
-    status: 'PAID' as PayrollStatus,
-    paymentDate: '2026-08-25',
-    notes: '',
+    deduction: '250',
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -47,23 +37,17 @@ export const PayrollPage: React.FC = () => {
   const loadData = async () => {
     try {
       setIsLoading(true);
-      const [pays, emps] = await Promise.all([
-        isAdmin
-          ? payrollService.getAll()
-          : payrollService.getByEmployeeId(user?.employeeId || 'EMP002'),
+      const [payList, empList] = await Promise.all([
+        payrollService.getAll(),
         employeeService.getAll(),
       ]);
-      setPayrolls(pays);
-      setEmployees(emps);
-      if (emps.length > 0 && !formData.employeeId) {
-        setFormData((prev) => ({
-          ...prev,
-          employeeId: emps[0].employeeId,
-          basicSalary: String(Math.round(emps[0].salary / 12)),
-        }));
+      setPayrolls(payList);
+      setEmployees(empList);
+      if (empList.length > 0 && !formData.employeeId) {
+        setFormData((prev) => ({ ...prev, employeeId: empList[0].employeeId }));
       }
-    } catch (e) {
-      console.error(e);
+    } catch (e: any) {
+      showToast('error', 'Error Loading Payroll', e.message);
     } finally {
       setIsLoading(false);
     }
@@ -71,100 +55,38 @@ export const PayrollPage: React.FC = () => {
 
   useEffect(() => {
     loadData();
-  }, [isAdmin, user]);
+  }, []);
 
-  const handleOpenCreate = () => {
-    setIsEditing(false);
-    setSelectedPayroll(null);
-    const firstEmp = employees[0];
+  const handleOpenGenerate = () => {
     setFormData({
-      employeeId: firstEmp?.employeeId || '',
-      month: '2026-08',
-      year: 2026,
-      basicSalary: String(Math.round((firstEmp?.salary || 80000) / 12)),
+      employeeId: employees[0]?.employeeId || '',
+      month: 'September',
+      year: '2026',
       bonus: '500',
-      deduction: '650',
-      status: 'PAID',
-      paymentDate: new Date().toISOString().split('T')[0],
-      notes: 'Standard monthly compensation',
+      deduction: '250',
     });
-    setIsFormOpen(true);
+    setIsGenerateOpen(true);
   };
 
-  const handleOpenEdit = (p: Payroll) => {
-    setIsEditing(true);
-    setSelectedPayroll(p);
-    setFormData({
-      employeeId: p.employeeId,
-      month: p.month,
-      year: p.year,
-      basicSalary: String(p.basicSalary),
-      bonus: String(p.bonus),
-      deduction: String(p.deduction),
-      status: p.status,
-      paymentDate: p.paymentDate || '',
-      notes: p.notes || '',
-    });
-    setIsFormOpen(true);
-  };
-
-  const handleEmployeeChange = (empId: string) => {
-    const emp = employees.find((e) => e.employeeId === empId);
-    setFormData((prev) => ({
-      ...prev,
-      employeeId: empId,
-      basicSalary: emp ? String(Math.round(emp.salary / 12)) : prev.basicSalary,
-    }));
-  };
-
-  const handleFormSubmit = async (e: React.FormEvent) => {
+  const handleGenerateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const emp = employees.find((e) => e.employeeId === formData.employeeId);
-    if (!emp) return;
+    if (!formData.employeeId) return;
 
     try {
       setIsSubmitting(true);
-      const payload = {
-        employeeId: formData.employeeId,
-        employeeName: emp.fullName || `${emp.firstName} ${emp.lastName}`,
-        departmentName: emp.departmentName || 'Operations',
-        month: formData.month,
-        year: parseInt(String(formData.year), 10) || 2026,
-        basicSalary: parseFloat(formData.basicSalary) || 0,
-        bonus: parseFloat(formData.bonus) || 0,
-        deduction: parseFloat(formData.deduction) || 0,
-        status: formData.status,
-        paymentDate: formData.paymentDate,
-        notes: formData.notes,
-      };
+      const newPay = await payrollService.generatePayroll(
+        formData.employeeId,
+        formData.month,
+        parseInt(formData.year, 10) || 2026,
+        parseFloat(formData.bonus) || 0,
+        parseFloat(formData.deduction) || 0
+      );
 
-      if (isEditing && selectedPayroll) {
-        await payrollService.update(selectedPayroll.payrollId, payload);
-        showToast('success', 'Payroll Record Updated', `Updated pay slip for ${payload.employeeName}`);
-      } else {
-        await payrollService.create(payload);
-        showToast('success', 'Payroll Generated', `Created pay slip for ${payload.employeeName}`);
-      }
-
-      setIsFormOpen(false);
+      showToast('success', 'Pay Slip Generated', `Generated for ${newPay.employeeName} (${formatCurrency(newPay.netSalary)})`);
+      setIsGenerateOpen(false);
       loadData();
     } catch (err: any) {
-      showToast('error', 'Operation Failed', err.message);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!selectedPayroll) return;
-    try {
-      setIsSubmitting(true);
-      await payrollService.delete(selectedPayroll.payrollId);
-      showToast('success', 'Payroll Record Removed', 'The pay slip has been deleted.');
-      setIsDeleteOpen(false);
-      loadData();
-    } catch (err: any) {
-      showToast('error', 'Delete Failed', err.message);
+      showToast('error', 'Generation Failed', err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -173,48 +95,36 @@ export const PayrollPage: React.FC = () => {
   const columns: Column<Payroll>[] = [
     {
       key: 'payrollId',
-      header: 'Slip ID',
+      header: 'Pay Slip ID',
       sortable: true,
       render: (p) => <span className="font-mono font-semibold text-blue-400">{p.payrollId}</span>,
     },
     {
       key: 'employeeName',
-      header: 'Employee',
+      header: 'Employee Staff',
       sortable: true,
       render: (p) => (
         <div>
           <div className="font-semibold text-slate-100">{p.employeeName}</div>
-          <div className="text-[11px] text-slate-400">{p.departmentName}</div>
+          <div className="text-[11px] font-mono text-slate-400">{p.employeeId} • {p.departmentName}</div>
         </div>
       ),
     },
     {
-      key: 'month',
-      header: 'Period',
-      sortable: true,
-      render: (p) => <span className="font-mono text-xs text-slate-300">{p.month}</span>,
+      key: 'period',
+      header: 'Pay Period',
+      render: (p) => <span className="font-mono text-xs text-slate-300">{p.month} {p.year}</span>,
     },
     {
       key: 'basicSalary',
-      header: 'Basic Salary',
+      header: 'Basic Monthly ($)',
+      sortable: true,
       align: 'right',
-      render: (p) => <span className="font-mono text-slate-300">{formatCurrency(p.basicSalary)}</span>,
-    },
-    {
-      key: 'bonus',
-      header: 'Bonus (+)',
-      align: 'right',
-      render: (p) => <span className="font-mono text-emerald-400">+{formatCurrency(p.bonus)}</span>,
-    },
-    {
-      key: 'deduction',
-      header: 'Deductions (-)',
-      align: 'right',
-      render: (p) => <span className="font-mono text-rose-400">-{formatCurrency(p.deduction)}</span>,
+      render: (p) => <span className="font-mono text-xs text-slate-300">{formatCurrency(p.basicSalary)}</span>,
     },
     {
       key: 'netSalary',
-      header: 'Net Take-Home',
+      header: 'Net Take-Home ($)',
       sortable: true,
       align: 'right',
       render: (p) => (
@@ -225,48 +135,26 @@ export const PayrollPage: React.FC = () => {
     },
     {
       key: 'status',
-      header: 'Status',
+      header: 'Disbursement',
       sortable: true,
       render: (p) => <StatusBadge status={p.status} />,
     },
     {
       key: 'actions',
-      header: 'Actions',
+      header: 'Pay Slip',
       align: 'right',
       render: (p) => (
-        <div className="flex items-center justify-end gap-1.5">
-          <button
-            onClick={() => {
-              setSelectedPayroll(p);
-              setIsDetailOpen(true);
-            }}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-            title="View Pay Slip"
-          >
-            <Eye className="w-4 h-4" />
-          </button>
-          {isAdmin && (
-            <>
-              <button
-                onClick={() => handleOpenEdit(p)}
-                className="p-1.5 rounded-lg text-blue-400 hover:text-blue-300 hover:bg-blue-950/50 transition-colors"
-                title="Edit Payroll"
-              >
-                <Edit2 className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => {
-                  setSelectedPayroll(p);
-                  setIsDeleteOpen(true);
-                }}
-                className="p-1.5 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-950/50 transition-colors"
-                title="Delete Slip"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </>
-          )}
-        </div>
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => {
+            setSelectedPayroll(p);
+            setIsDetailOpen(true);
+          }}
+          leftIcon={<Eye className="w-3.5 h-3.5" />}
+        >
+          View Slip
+        </Button>
       ),
     },
   ];
@@ -274,11 +162,19 @@ export const PayrollPage: React.FC = () => {
   const filters: FilterConfig[] = [
     {
       key: 'status',
-      label: 'Disbursement Status',
+      label: 'Status',
       options: [
         { label: 'Paid', value: 'PAID' },
-        { label: 'Pending', value: 'PENDING' },
-        { label: 'Processing', value: 'PROCESSING' },
+        { label: 'Pending Processing', value: 'PENDING' },
+      ],
+    },
+    {
+      key: 'month',
+      label: 'Month',
+      options: [
+        { label: 'September', value: 'September' },
+        { label: 'August', value: 'August' },
+        { label: 'July', value: 'July' },
       ],
     },
   ];
@@ -287,209 +183,148 @@ export const PayrollPage: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-white tracking-tight">
-            {isAdmin ? 'Factory Payroll & Compensation Management' : 'My Payroll Statements'}
-          </h2>
+          <h2 className="text-2xl font-bold text-white tracking-tight">Workforce Payroll & Compensation</h2>
           <p className="text-xs text-slate-400 mt-1">
-            {isAdmin
-              ? 'Calculate basic salary, performance bonuses, statutory deductions, and generate net payouts.'
-              : 'Review your monthly salary slips, tax deductions, and historical compensation.'}
+            Calculate statutory withholdings, performance bonuses, net disbursements, and generate pay slips.
           </p>
         </div>
 
-        {isAdmin && (
-          <Button
-            variant="primary"
-            onClick={handleOpenCreate}
-            leftIcon={<Plus className="w-4 h-4" />}
-          >
-            Generate Payroll Slip
-          </Button>
-        )}
+        <Button
+          variant="primary"
+          onClick={handleOpenGenerate}
+          leftIcon={<Plus className="w-4 h-4" />}
+        >
+          Generate Pay Slip
+        </Button>
       </div>
 
       <DataTable
         data={payrolls}
         columns={columns}
         rowKey={(p) => p.payrollId}
-        searchKey={(p) => `${p.payrollId} ${p.employeeName} ${p.month} ${p.departmentName}`}
-        searchPlaceholder="Search by Slip ID, employee, period..."
+        searchKey={(p) => `${p.payrollId} ${p.employeeName} ${p.employeeId} ${p.departmentName}`}
+        searchPlaceholder="Search payroll records..."
         filters={filters}
         isLoading={isLoading}
       />
 
-      {/* Create / Edit Modal (Admin only) */}
-      {isAdmin && (
-        <Modal
-          isOpen={isFormOpen}
-          onClose={() => setIsFormOpen(false)}
-          title={isEditing ? `Edit Payroll Slip: ${selectedPayroll?.payrollId}` : 'Generate Monthly Payroll Slip'}
-          subtitle="PostgreSQL PAYROLL entity disbursement calculation"
-          maxWidth="lg"
-          icon={<Receipt className="w-5 h-5 text-emerald-400" />}
-        >
-          <form onSubmit={handleFormSubmit} className="space-y-4">
+      {/* Generate Payroll Modal */}
+      <Modal
+        isOpen={isGenerateOpen}
+        onClose={() => setIsGenerateOpen(false)}
+        title="Generate Monthly Pay Slip"
+        subtitle="PostgreSQL PAYROLL relational calculation"
+        maxWidth="md"
+        icon={<Receipt className="w-5 h-5 text-blue-400" />}
+      >
+        <form onSubmit={handleGenerateSubmit} className="space-y-4">
+          <Select
+            label="Target Employee"
+            value={formData.employeeId}
+            onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
+            options={employees.map((emp) => ({
+              label: `${emp.fullName || emp.firstName + ' ' + emp.lastName} (${formatCurrency(emp.salary)} / yr)`,
+              value: emp.employeeId,
+            }))}
+            required
+          />
+
+          <div className="grid grid-cols-2 gap-4">
             <Select
-              label="Select Employee"
-              value={formData.employeeId}
-              onChange={(e) => handleEmployeeChange(e.target.value)}
-              options={employees.map((e) => ({
-                value: e.employeeId,
-                label: `${e.fullName || e.firstName + ' ' + e.lastName} (${e.departmentName})`,
-              }))}
+              label="Pay Month"
+              value={formData.month}
+              onChange={(e) => setFormData({ ...formData, month: e.target.value })}
+              options={[
+                { label: 'September', value: 'September' },
+                { label: 'August', value: 'August' },
+                { label: 'July', value: 'July' },
+                { label: 'June', value: 'June' },
+              ]}
               required
             />
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Input
-                label="Payroll Month (YYYY-MM)"
-                value={formData.month}
-                onChange={(e) => setFormData({ ...formData, month: e.target.value })}
-                placeholder="2026-08"
-                required
-              />
-              <Select
-                label="Payment Status"
-                value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value as PayrollStatus })}
-                options={[
-                  { label: 'Paid', value: 'PAID' },
-                  { label: 'Pending', value: 'PENDING' },
-                  { label: 'Processing', value: 'PROCESSING' },
-                ]}
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <Input
-                label="Basic Salary ($)"
-                type="number"
-                min="0"
-                step="50"
-                value={formData.basicSalary}
-                onChange={(e) => setFormData({ ...formData, basicSalary: e.target.value })}
-                required
-              />
-              <Input
-                label="Bonus ($)"
-                type="number"
-                min="0"
-                step="50"
-                value={formData.bonus}
-                onChange={(e) => setFormData({ ...formData, bonus: e.target.value })}
-              />
-              <Input
-                label="Deductions ($)"
-                type="number"
-                min="0"
-                step="50"
-                value={formData.deduction}
-                onChange={(e) => setFormData({ ...formData, deduction: e.target.value })}
-              />
-            </div>
-
-            {/* Calculated Net Preview */}
-            <div className="p-3.5 rounded-lg bg-slate-950/80 border border-slate-800 flex justify-between items-center text-sm">
-              <span className="text-slate-300 font-semibold">Estimated Net Take-Home:</span>
-              <span className="font-mono font-bold text-emerald-400 text-base">
-                {formatCurrency(
-                  Math.max(
-                    0,
-                    (parseFloat(formData.basicSalary) || 0) +
-                      (parseFloat(formData.bonus) || 0) -
-                      (parseFloat(formData.deduction) || 0)
-                  )
-                )}
-              </span>
-            </div>
-
             <Input
-              label="Disbursement Date"
-              type="date"
-              value={formData.paymentDate}
-              onChange={(e) => setFormData({ ...formData, paymentDate: e.target.value })}
+              label="Fiscal Year"
+              type="number"
+              value={formData.year}
+              onChange={(e) => setFormData({ ...formData, year: e.target.value })}
+              required
             />
+          </div>
 
+          <div className="grid grid-cols-2 gap-4">
             <Input
-              label="Internal Remarks / Notes"
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              placeholder="e.g. Performance incentive approved by plant head"
+              label="Performance Bonus ($)"
+              type="number"
+              value={formData.bonus}
+              onChange={(e) => setFormData({ ...formData, bonus: e.target.value })}
+              required
             />
+            <Input
+              label="Statutory Deductions ($)"
+              type="number"
+              value={formData.deduction}
+              onChange={(e) => setFormData({ ...formData, deduction: e.target.value })}
+              required
+            />
+          </div>
 
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
-              <Button variant="secondary" onClick={() => setIsFormOpen(false)} type="button">
-                Cancel
-              </Button>
-              <Button variant="primary" type="submit" isLoading={isSubmitting}>
-                {isEditing ? 'Save Slip' : 'Issue Payroll Slip'}
-              </Button>
-            </div>
-          </form>
-        </Modal>
-      )}
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+            <Button variant="secondary" onClick={() => setIsGenerateOpen(false)} type="button">
+              Cancel
+            </Button>
+            <Button variant="primary" type="submit" isLoading={isSubmitting}>
+              Disburse & Post
+            </Button>
+          </div>
+        </form>
+      </Modal>
 
       {/* Pay Slip View Modal */}
       {selectedPayroll && (
         <Modal
           isOpen={isDetailOpen}
           onClose={() => setIsDetailOpen(false)}
-          title={`Official Pay Slip: ${selectedPayroll.payrollId}`}
-          subtitle={`Period: ${selectedPayroll.month} • ${selectedPayroll.employeeName}`}
+          title={`Pay Slip: ${selectedPayroll.payrollId}`}
+          subtitle={`${selectedPayroll.employeeName} • ${selectedPayroll.month} ${selectedPayroll.year}`}
           maxWidth="lg"
           icon={<Receipt className="w-5 h-5 text-emerald-400" />}
         >
-          <div className="space-y-4">
-            <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 flex justify-between items-center">
+          <div className="space-y-6">
+            <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 flex items-center justify-between">
               <div>
                 <h4 className="text-base font-bold text-white">{selectedPayroll.employeeName}</h4>
-                <p className="text-xs text-blue-400 font-mono">
-                  {selectedPayroll.employeeId} • {selectedPayroll.departmentName}
-                </p>
+                <p className="text-xs text-slate-400 font-mono">{selectedPayroll.employeeId} • {selectedPayroll.departmentName}</p>
               </div>
               <StatusBadge status={selectedPayroll.status} />
             </div>
 
-            <div className="border border-slate-800 rounded-xl overflow-hidden text-xs">
-              <div className="grid grid-cols-2 bg-slate-850 p-3 font-semibold text-slate-300 border-b border-slate-800">
-                <span>Earnings & Benefits</span>
-                <span className="text-right">Amount ($)</span>
+            <div className="space-y-2 border border-slate-800 rounded-xl p-4 bg-slate-950/40 text-xs font-mono">
+              <div className="flex justify-between py-1.5 border-b border-slate-800/80 text-slate-300">
+                <span>Basic Monthly Salary:</span>
+                <span className="font-bold text-slate-100">{formatCurrency(selectedPayroll.basicSalary)}</span>
               </div>
-              <div className="p-3 space-y-2 divide-y divide-slate-800/60">
-                <div className="flex justify-between items-center pt-1 text-slate-300">
-                  <span>Base Basic Salary</span>
-                  <span className="font-mono">{formatCurrency(selectedPayroll.basicSalary)}</span>
-                </div>
-                <div className="flex justify-between items-center pt-2 text-emerald-400">
-                  <span>Shift & Production Bonus</span>
-                  <span className="font-mono">+{formatCurrency(selectedPayroll.bonus)}</span>
-                </div>
-                <div className="flex justify-between items-center pt-2 text-rose-400">
-                  <span>Statutory Tax & Insurance Deductions</span>
-                  <span className="font-mono">-{formatCurrency(selectedPayroll.deduction)}</span>
-                </div>
-                <div className="flex justify-between items-center pt-3 text-sm font-bold text-white">
-                  <span>Net Salary Credited</span>
-                  <span className="font-mono text-emerald-400 text-base">{formatCurrency(selectedPayroll.netSalary)}</span>
-                </div>
+              <div className="flex justify-between py-1.5 border-b border-slate-800/80 text-emerald-400">
+                <span>Production / Shift Bonus:</span>
+                <span>+{formatCurrency(selectedPayroll.bonus)}</span>
+              </div>
+              <div className="flex justify-between py-1.5 border-b border-slate-800/80 text-rose-400">
+                <span>Tax & Healthcare Deductions:</span>
+                <span>-{formatCurrency(selectedPayroll.deduction)}</span>
+              </div>
+              <div className="flex justify-between py-2 text-sm font-bold text-white pt-2">
+                <span>Net Transferred Take-Home:</span>
+                <span className="text-emerald-400 text-base">{formatCurrency(selectedPayroll.netSalary)}</span>
               </div>
             </div>
 
-            {selectedPayroll.notes && (
-              <p className="text-xs text-slate-400 italic bg-slate-900 p-3 rounded-lg border border-slate-800">
-                Note: {selectedPayroll.notes}
-              </p>
-            )}
-
-            <div className="flex justify-between items-center pt-3 border-t border-slate-800">
+            <div className="flex items-center justify-between pt-3 border-t border-slate-800">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => showToast('info', 'Pay Slip Downloaded', 'PDF Pay Slip rendered to download folder.')}
-                leftIcon={<Download className="w-4 h-4" />}
+                onClick={() => showToast('info', 'Print Spooler', 'Pay slip dispatched to secure printer.')}
+                leftIcon={<Printer className="w-4 h-4" />}
               >
-                Export PDF
+                Print Slip
               </Button>
               <Button variant="secondary" size="sm" onClick={() => setIsDetailOpen(false)}>
                 Close
@@ -498,16 +333,6 @@ export const PayrollPage: React.FC = () => {
           </div>
         </Modal>
       )}
-
-      {/* Delete Dialog */}
-      <ConfirmDialog
-        isOpen={isDeleteOpen}
-        onClose={() => setIsDeleteOpen(false)}
-        onConfirm={handleDeleteConfirm}
-        title="Delete Payroll Record"
-        message={`Delete pay slip ${selectedPayroll?.payrollId} for ${selectedPayroll?.employeeName}?`}
-        isLoading={isSubmitting}
-      />
     </div>
   );
 };

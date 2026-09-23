@@ -1,8 +1,8 @@
-import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
+import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+export const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:8080/api';
 
-export const apiClient: AxiosInstance = axios.create({
+export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
@@ -10,38 +10,29 @@ export const apiClient: AxiosInstance = axios.create({
   timeout: 10000,
 });
 
-// Request interceptor to attach JWT Token
 apiClient.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    const token = localStorage.getItem('smart_erp_jwt_token');
-    if (token && config.headers) {
+  (config) => {
+    const token = localStorage.getItem('smart_erp_token');
+    if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Response interceptor for centralized error handling & 401 handling
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      localStorage.removeItem('smart_erp_jwt_token');
+      localStorage.removeItem('smart_erp_token');
       localStorage.removeItem('smart_erp_user');
       if (window.location.pathname !== '/login') {
-        window.location.href = '/login?expired=true';
+        window.location.href = '/login';
       }
     }
     return Promise.reject(error);
   }
 );
 
-// Helper for simulated delay when using mock data
-export const simulateLatency = (ms: number = 300): Promise<void> => {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-};
-
-export default apiClient;
+export const delay = (ms: number = 300) => new Promise((resolve) => setTimeout(resolve, ms));

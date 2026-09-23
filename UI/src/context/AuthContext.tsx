@@ -1,33 +1,16 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, AuthContextType, LoginRequest } from '../types/auth';
+import { User, LoginRequest, AuthContextType } from '../types/auth';
 import { authService } from '../services/authService';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(localStorage.getItem('smart_erp_jwt_token'));
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-
-  useEffect(() => {
-    const initAuth = async () => {
-      const storedUser = localStorage.getItem('smart_erp_user');
-      const storedToken = localStorage.getItem('smart_erp_jwt_token');
-
-      if (storedToken && storedUser) {
-        try {
-          setUser(JSON.parse(storedUser));
-          setToken(storedToken);
-        } catch {
-          localStorage.removeItem('smart_erp_user');
-          localStorage.removeItem('smart_erp_jwt_token');
-        }
-      }
-      setIsLoading(false);
-    };
-
-    initAuth();
-  }, []);
+  const [user, setUser] = useState<User | null>(() => {
+    const saved = localStorage.getItem('smart_erp_user');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem('smart_erp_token'));
+  const [isLoading, setIsLoading] = useState(false);
 
   const login = async (credentials: LoginRequest): Promise<boolean> => {
     try {
@@ -35,11 +18,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const res = await authService.login(credentials);
       setUser(res.user);
       setToken(res.token);
-      localStorage.setItem('smart_erp_jwt_token', res.token);
+      localStorage.setItem('smart_erp_token', res.token);
       localStorage.setItem('smart_erp_user', JSON.stringify(res.user));
       return true;
-    } catch (err: any) {
-      throw err;
+    } catch (err) {
+      console.error('Login error', err);
+      return false;
     } finally {
       setIsLoading(false);
     }
@@ -49,6 +33,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     authService.logout();
     setUser(null);
     setToken(null);
+    localStorage.removeItem('smart_erp_token');
+    localStorage.removeItem('smart_erp_user');
   };
 
   const isAdmin = user?.role === 'ADMIN';

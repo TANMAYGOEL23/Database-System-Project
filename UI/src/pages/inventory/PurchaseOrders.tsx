@@ -1,45 +1,36 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Plus,
-  FileSpreadsheet,
-  Eye,
-  PackageCheck,
-  X,
-} from 'lucide-react';
+import { Plus, ShoppingCart, CheckCircle, Clock, Truck, FileText, ChevronRight } from 'lucide-react';
 import { DataTable, Column, FilterConfig } from '../../components/tables/DataTable';
+import { StatusBadge } from '../../components/ui/StatusBadge';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
-import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useNotification } from '../../context/NotificationContext';
 import { purchaseOrderService } from '../../services/purchaseOrderService';
 import { supplierService } from '../../services/supplierService';
 import { productService } from '../../services/productService';
-import { PurchaseOrder, PurchaseOrderItem, Supplier, Product, PurchaseOrderStatus } from '../../types/inventory';
+import { PurchaseOrder, Supplier, Product, PurchaseOrderStatus } from '../../types/inventory';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 
 export const PurchaseOrders: React.FC = () => {
-  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
+  const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Modals
+  // Modal
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const [selectedPO, setSelectedPO] = useState<PurchaseOrder | null>(null);
-
-  // Form State
   const [selectedSupplierId, setSelectedSupplierId] = useState('');
-  const [orderDate, setOrderDate] = useState(new Date().toISOString().split('T')[0]);
-  const [expectedDate, setExpectedDate] = useState(
-    new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]
-  );
+  const [expectedDate, setExpectedDate] = useState('');
   const [notes, setNotes] = useState('');
-  const [items, setItems] = useState<PurchaseOrderItem[]>([]);
-
+  const [items, setItems] = useState<{ productId: string; productName: string; quantity: number; unitPrice: number; subtotal: number }[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Line Item selector
+  const [selectedProdId, setSelectedProdId] = useState('');
+  const [itemQty, setItemQty] = useState('10');
+
   const { showToast } = useNotification();
 
   const loadData = async () => {
@@ -50,14 +41,13 @@ export const PurchaseOrders: React.FC = () => {
         supplierService.getAll(),
         productService.getAll(),
       ]);
-      setPurchaseOrders(pos);
+      setOrders(pos);
       setSuppliers(sups);
       setProducts(prods);
-      if (sups.length > 0 && !selectedSupplierId) {
-        setSelectedSupplierId(sups[0].supplierId);
-      }
+      if (sups.length > 0 && !selectedSupplierId) setSelectedSupplierId(sups[0].supplierId);
+      if (prods.length > 0 && !selectedProdId) setSelectedProdId(prods[0].productId);
     } catch (e: any) {
-      showToast('error', 'Error Loading Purchase Orders', e.message);
+      showToast('error', 'Failed to load PO records', e.message);
     } finally {
       setIsLoading(false);
     }
@@ -67,77 +57,39 @@ export const PurchaseOrders: React.FC = () => {
     loadData();
   }, []);
 
-  const handleOpenCreate = () => {
-    setSelectedSupplierId(suppliers[0]?.supplierId || '');
-    setOrderDate(new Date().toISOString().split('T')[0]);
-    setExpectedDate(new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]);
-    setNotes('');
-    if (products.length > 0) {
-      setItems([
-        {
-          productId: products[0].productId,
-          productName: products[0].productName,
-          quantity: 20,
-          unitPrice: products[0].costPrice,
-          subtotal: 20 * products[0].costPrice,
-          tax: 20 * products[0].costPrice * 0.18,
-        },
-      ]);
-    } else {
-      setItems([]);
-    }
-    setIsCreateOpen(true);
+  const handleAddItem = () => {
+    const prod = products.find((p) => p.productId === selectedProdId);
+    if (!prod) return;
+    const qty = parseInt(itemQty, 10) || 1;
+    const cost = prod.costPrice || 100;
+    const subtotal = qty * cost;
+
+    setItems([...items, {
+      productId: prod.productId,
+      productName: prod.productName,
+      quantity: qty,
+      unitPrice: cost,
+      subtotal,
+    }]);
   };
 
-  const handleAddItemRow = () => {
-    if (products.length === 0) return;
-    const defaultPrd = products[0];
-    setItems([
-      ...items,
-      {
-        productId: defaultPrd.productId,
-        productName: defaultPrd.productName,
-        quantity: 10,
-        unitPrice: defaultPrd.costPrice,
-        subtotal: 10 * defaultPrd.costPrice,
-        tax: 10 * defaultPrd.costPrice * 0.18,
-      },
-    ]);
-  };
-
-  const handleRemoveItemRow = (index: number) => {
+  const handleRemoveItem = (index: number) => {
     setItems(items.filter((_, i) => i !== index));
   };
 
-  const handleItemChange = (index: number, field: 'productId' | 'quantity' | 'unitPrice', value: any) => {
-    const updated = [...items];
-    const targetItem = { ...updated[index] };
-
-    if (field === 'productId') {
-      const prd = products.find((p) => p.productId === value);
-      targetItem.productId = value;
-      targetItem.productName = prd ? prd.productName : value;
-      targetItem.unitPrice = prd ? prd.costPrice : targetItem.unitPrice;
-    } else if (field === 'quantity') {
-      targetItem.quantity = Math.max(1, parseInt(value, 10) || 1);
-    } else if (field === 'unitPrice') {
-      targetItem.unitPrice = Math.max(0, parseFloat(value) || 0);
-    }
-
-    targetItem.subtotal = targetItem.quantity * targetItem.unitPrice;
-    targetItem.tax = targetItem.subtotal * 0.18;
-    updated[index] = targetItem;
-    setItems(updated);
+  const handleOpenCreate = () => {
+    setItems([]);
+    setNotes('');
+    const d = new Date();
+    d.setDate(d.getDate() + 7);
+    setExpectedDate(d.toISOString().split('T')[0]);
+    setIsCreateOpen(true);
   };
-
-  const subtotal = items.reduce((sum, item) => sum + item.subtotal, 0);
-  const tax = subtotal * 0.18;
-  const totalAmount = subtotal + tax;
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (items.length === 0) {
-      showToast('error', 'Validation Error', 'Purchase order must have at least one product item');
+      showToast('error', 'Items Required', 'Please add at least one line item to the PO.');
       return;
     }
 
@@ -146,138 +98,121 @@ export const PurchaseOrders: React.FC = () => {
 
     try {
       setIsSubmitting(true);
-      const newPO = await purchaseOrderService.create({
+      const today = new Date().toISOString().split('T')[0];
+      await purchaseOrderService.create({
         supplierId: sup.supplierId,
         supplierName: sup.supplierName,
-        orderDate,
+        orderDate: today,
         expectedDeliveryDate: expectedDate,
         status: 'PENDING',
         items,
         notes,
       });
 
-      showToast(
-        'success',
-        'Purchase Order Issued',
-        `PO ${newPO.poId} created for ${sup.supplierName} (Total: ${formatCurrency(newPO.totalAmount)}).`
-      );
+      showToast('success', 'Purchase Order Created', `Dispatched PO to ${sup.supplierName}.`);
       setIsCreateOpen(false);
       loadData();
-    } catch (err: any) {
-      showToast('error', 'PO Creation Failed', err.message);
+    } catch (e: any) {
+      showToast('error', 'PO Creation Failed', e.message);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleStatusChange = async (poId: string, newStatus: PurchaseOrderStatus) => {
+  const handleStatusChange = async (poId: string, nextStatus: PurchaseOrderStatus) => {
     try {
-      const updated = await purchaseOrderService.updateStatus(poId, newStatus);
-      if (newStatus === 'RECEIVED') {
-        showToast(
-          'success',
-          'Goods Inward Received & Stock Updated',
-          `PO ${poId} marked as RECEIVED. Inventory stock balances increased and stock transaction audit recorded!`
-        );
-      } else {
-        showToast('info', 'Status Updated', `PO ${poId} status set to ${newStatus}`);
-      }
+      setIsSubmitting(true);
+      await purchaseOrderService.updateStatus(poId, nextStatus);
+      showToast('success', 'PO Status Updated', `PO marked as ${nextStatus}. Inventory adjusted automatically.`);
       loadData();
-      if (selectedPO && selectedPO.poId === poId) {
-        setSelectedPO(updated);
-      }
-    } catch (err: any) {
-      showToast('error', 'Status Update Failed', err.message);
+    } catch (e: any) {
+      showToast('error', 'Status Update Failed', e.message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const columns: Column<PurchaseOrder>[] = [
     {
       key: 'poId',
-      header: 'PO ID',
+      header: 'PO Number',
       sortable: true,
-      render: (po) => <span className="font-mono font-semibold text-blue-400">{po.poId}</span>,
+      render: (p) => <span className="font-mono text-xs font-semibold text-blue-400">{p.poId}</span>,
     },
     {
       key: 'supplierName',
-      header: 'Supplier Vendor',
+      header: 'Vendor Supplier',
       sortable: true,
-      render: (po) => (
-        <div>
-          <div className="font-semibold text-slate-100">{po.supplierName}</div>
-          <div className="text-[11px] text-slate-400 font-mono">{po.supplierId}</div>
-        </div>
-      ),
-    },
-    {
-      key: 'orderDate',
-      header: 'Order Date',
-      sortable: true,
-      render: (po) => <span className="font-mono text-xs text-slate-300">{formatDate(po.orderDate)}</span>,
-    },
-    {
-      key: 'itemsCount',
-      header: 'Line Items',
-      align: 'center',
-      render: (po) => (
-        <span className="font-mono text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-300">
-          {po.items.length} Products
+      render: (p) => (
+        <span className="font-semibold text-slate-100 flex items-center gap-1.5">
+          <Truck className="w-3.5 h-3.5 text-slate-400" />
+          {p.supplierName}
         </span>
       ),
     },
     {
+      key: 'orderDate',
+      header: 'Order / Due Date',
+      sortable: true,
+      render: (p) => (
+        <div className="font-mono text-xs text-slate-300">
+          <div>Ordered: {formatDate(p.orderDate)}</div>
+          <div className="text-[11px] text-slate-400">Due: {p.expectedDeliveryDate ? formatDate(p.expectedDeliveryDate) : 'TBD'}</div>
+        </div>
+      ),
+    },
+    {
+      key: 'items',
+      header: 'Line Items Summary',
+      render: (p) => (
+        <div className="text-xs text-slate-300">
+          <span className="font-semibold">{p.items.length} Product SKUs</span>
+          <div className="text-[11px] text-slate-400 line-clamp-1">
+            {p.items.map((i) => `${i.productName} (${i.quantity})`).join(', ')}
+          </div>
+        </div>
+      ),
+    },
+    {
       key: 'totalAmount',
-      header: 'Total Amount ($)',
+      header: 'Total PO Value ($)',
       sortable: true,
       align: 'right',
-      render: (po) => (
-        <span className="font-mono font-bold text-emerald-400 text-sm">
-          {formatCurrency(po.totalAmount)}
+      render: (p) => (
+        <span className="font-mono font-bold text-xs text-emerald-400">
+          {formatCurrency(p.totalAmount)}
         </span>
       ),
     },
     {
       key: 'status',
-      header: 'Status',
+      header: 'Fulfillment Status',
       sortable: true,
-      render: (po) => <StatusBadge status={po.status} />,
+      render: (p) => <StatusBadge status={p.status} />,
     },
     {
       key: 'actions',
-      header: 'Actions',
+      header: 'Lifecycle Actions',
       align: 'right',
-      render: (po) => (
-        <div className="flex items-center justify-end gap-2">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => {
-              setSelectedPO(po);
-              setIsDetailOpen(true);
-            }}
-            leftIcon={<Eye className="w-3.5 h-3.5" />}
-          >
-            View Details
-          </Button>
-
-          {po.status === 'APPROVED' && (
+      render: (p) => (
+        <div className="flex items-center justify-end gap-1.5">
+          {p.status === 'PENDING' && (
             <Button
-              variant="emerald"
+              variant="secondary"
               size="sm"
-              onClick={() => handleStatusChange(po.poId, 'RECEIVED')}
-              leftIcon={<PackageCheck className="w-3.5 h-3.5" />}
+              onClick={() => handleStatusChange(p.poId, 'APPROVED')}
             >
-              Receive Goods
+              Approve
             </Button>
           )}
-
-          {po.status === 'PENDING' && (
+          {p.status === 'APPROVED' && (
             <Button
               variant="primary"
               size="sm"
-              onClick={() => handleStatusChange(po.poId, 'APPROVED')}
+              onClick={() => handleStatusChange(p.poId, 'RECEIVED')}
+              leftIcon={<CheckCircle className="w-3.5 h-3.5" />}
             >
-              Approve PO
+              Receive Goods
             </Button>
           )}
         </div>
@@ -288,11 +223,11 @@ export const PurchaseOrders: React.FC = () => {
   const filters: FilterConfig[] = [
     {
       key: 'status',
-      label: 'PO Status',
+      label: 'Fulfillment Status',
       options: [
-        { label: 'Pending', value: 'PENDING' },
-        { label: 'Approved', value: 'APPROVED' },
-        { label: 'Received', value: 'RECEIVED' },
+        { label: 'Pending Approval', value: 'PENDING' },
+        { label: 'Approved / In-Transit', value: 'APPROVED' },
+        { label: 'Received at Dock', value: 'RECEIVED' },
         { label: 'Cancelled', value: 'CANCELLED' },
       ],
     },
@@ -302,57 +237,43 @@ export const PurchaseOrders: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-white tracking-tight">Procurement & Purchase Orders</h2>
+          <h2 className="text-2xl font-bold text-white tracking-tight">Procurement Orders & Goods Receipts</h2>
           <p className="text-xs text-slate-400 mt-1">
-            Vendor supply contracts, line-item pricing, GST computation, and automatic stock reception ledger sync.
+            Supplier purchase requisitions, automated inbound stock sync, and invoice generation pipelines.
           </p>
         </div>
 
-        <Button
-          variant="primary"
-          onClick={handleOpenCreate}
-          leftIcon={<Plus className="w-4 h-4" />}
-        >
+        <Button variant="primary" onClick={handleOpenCreate} leftIcon={<Plus className="w-4 h-4" />}>
           Create Purchase Order
         </Button>
       </div>
 
       <DataTable
-        data={purchaseOrders}
+        data={orders}
         columns={columns}
-        rowKey={(po) => po.poId}
-        searchKey={(po) => `${po.poId} ${po.supplierName} ${po.supplierId}`}
-        searchPlaceholder="Search purchase orders..."
+        rowKey={(p) => p.poId}
+        searchKey={(p) => `${p.poId} ${p.supplierName} ${p.status}`}
+        searchPlaceholder="Search POs by reference number or supplier..."
         filters={filters}
         isLoading={isLoading}
       />
 
-      {/* Multi-Item Purchase Order Create Modal */}
+      {/* PO Creation Modal */}
       <Modal
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
-        title="Issue Multi-Item Purchase Order"
-        subtitle="PostgreSQL PURCHASE_ORDER & PURCHASE_ORDER_ITEM relational schema"
-        maxWidth="3xl"
-        icon={<FileSpreadsheet className="w-5 h-5 text-blue-400" />}
+        title="Issue Purchase Order Requisition"
+        subtitle="PURCHASE_ORDER relational order & items generation"
+        maxWidth="lg"
+        icon={<ShoppingCart className="w-5 h-5 text-blue-400" />}
       >
         <form onSubmit={handleCreateSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Select
-              label="Selected Supplier"
+              label="Select Vendor / Supplier"
               value={selectedSupplierId}
               onChange={(e) => setSelectedSupplierId(e.target.value)}
-              options={suppliers.map((s) => ({
-                label: `${s.supplierName} (${s.supplierId})`,
-                value: s.supplierId,
-              }))}
-              required
-            />
-            <Input
-              label="Order Date"
-              type="date"
-              value={orderDate}
-              onChange={(e) => setOrderDate(e.target.value)}
+              options={suppliers.map((s) => ({ label: `${s.supplierName} (${s.supplierId})`, value: s.supplierId }))}
               required
             />
             <Input
@@ -364,111 +285,64 @@ export const PurchaseOrders: React.FC = () => {
             />
           </div>
 
-          {/* Dynamic Product Line Items Section */}
-          <div className="border border-slate-800 rounded-xl p-4 bg-slate-950/60 space-y-3">
-            <div className="flex items-center justify-between">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300">
-                Order Items & Quantity ({items.length})
-              </h4>
-              <Button
-                variant="outline"
-                size="sm"
-                type="button"
-                onClick={handleAddItemRow}
-                leftIcon={<Plus className="w-3.5 h-3.5" />}
-              >
-                Add Product Line
-              </Button>
+          {/* Line Item Adder */}
+          <div className="p-4 bg-slate-900/60 border border-slate-800 rounded-lg space-y-3">
+            <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Add Line Items</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+              <div className="sm:col-span-7">
+                <Select
+                  label="Product SKU"
+                  value={selectedProdId}
+                  onChange={(e) => setSelectedProdId(e.target.value)}
+                  options={products.map((p) => ({ label: `${p.productName} [${formatCurrency(p.costPrice)}]`, value: p.productId }))}
+                />
+              </div>
+              <div className="sm:col-span-3">
+                <Input
+                  label="Quantity"
+                  type="number"
+                  min="1"
+                  value={itemQty}
+                  onChange={(e) => setItemQty(e.target.value)}
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <Button type="button" variant="secondary" onClick={handleAddItem} className="w-full">
+                  Add
+                </Button>
+              </div>
             </div>
 
-            <div className="space-y-2 max-h-60 overflow-y-auto">
-              {items.map((item, index) => (
-                <div
-                  key={index}
-                  className="grid grid-cols-12 gap-2 items-center p-2.5 rounded-lg bg-slate-900 border border-slate-800"
-                >
-                  <div className="col-span-5">
-                    <label className="text-[10px] text-slate-400 block mb-0.5">Product</label>
-                    <select
-                      value={item.productId}
-                      onChange={(e) => handleItemChange(index, 'productId', e.target.value)}
-                      className="w-full rounded bg-slate-950 border border-slate-700 text-xs py-1.5 px-2 text-slate-200 focus:outline-none"
-                    >
-                      {products.map((p) => (
-                        <option key={p.productId} value={p.productId}>
-                          {p.productName} ({p.unit})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="col-span-2">
-                    <label className="text-[10px] text-slate-400 block mb-0.5">Quantity</label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={item.quantity}
-                      onChange={(e) => handleItemChange(index, 'quantity', e.target.value)}
-                      className="w-full rounded bg-slate-950 border border-slate-700 text-xs py-1.5 px-2 text-slate-200 font-mono focus:outline-none"
-                    />
-                  </div>
-
-                  <div className="col-span-2">
-                    <label className="text-[10px] text-slate-400 block mb-0.5">Unit Price ($)</label>
-                    <input
-                      type="number"
-                      step="0.5"
-                      min="0"
-                      value={item.unitPrice}
-                      onChange={(e) => handleItemChange(index, 'unitPrice', e.target.value)}
-                      className="w-full rounded bg-slate-950 border border-slate-700 text-xs py-1.5 px-2 text-slate-200 font-mono focus:outline-none"
-                    />
-                  </div>
-
-                  <div className="col-span-2 text-right">
-                    <label className="text-[10px] text-slate-400 block mb-0.5">Line Total</label>
-                    <span className="font-mono text-xs font-bold text-emerald-400">
-                      {formatCurrency(item.subtotal)}
-                    </span>
-                  </div>
-
-                  <div className="col-span-1 text-center">
-                    {items.length > 1 && (
+            {/* Item List */}
+            {items.length > 0 && (
+              <div className="mt-3 border-t border-slate-800 pt-3 space-y-2 max-h-40 overflow-y-auto">
+                {items.map((itm, idx) => (
+                  <div key={idx} className="flex items-center justify-between text-xs bg-slate-800/40 p-2 rounded">
+                    <div>
+                      <span className="font-semibold text-white">{itm.productName}</span>
+                      <span className="text-slate-400 ml-2 font-mono">Qty: {itm.quantity} × {formatCurrency(itm.unitPrice)}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="font-mono font-bold text-emerald-400">{formatCurrency(itm.subtotal)}</span>
                       <button
                         type="button"
-                        onClick={() => handleRemoveItemRow(index)}
-                        className="text-slate-500 hover:text-rose-400 p-1"
+                        onClick={() => handleRemoveItem(idx)}
+                        className="text-rose-400 hover:text-rose-300 text-xs"
                       >
-                        <X className="w-4 h-4" />
+                        Remove
                       </button>
-                    )}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Subtotal & Tax Calculation Panel */}
-            <div className="border-t border-slate-800 pt-3 flex flex-col items-end space-y-1 text-xs">
-              <div className="flex justify-between w-60 text-slate-300">
-                <span>Subtotal:</span>
-                <span className="font-mono">{formatCurrency(subtotal)}</span>
+                ))}
               </div>
-              <div className="flex justify-between w-60 text-slate-400">
-                <span>Tax (18% Standard GST):</span>
-                <span className="font-mono">{formatCurrency(tax)}</span>
-              </div>
-              <div className="flex justify-between w-60 text-sm font-bold text-white pt-1 border-t border-slate-800">
-                <span>Total PO Amount:</span>
-                <span className="font-mono text-emerald-400 text-base">{formatCurrency(totalAmount)}</span>
-              </div>
-            </div>
+            )}
           </div>
 
           <Input
             label="Internal Notes / Shipping Instructions"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="e.g. Deliver to Warehouse Beta Bay 1"
+            placeholder="e.g. Standard Freight, Gate 3 Delivery Dock"
           />
 
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
@@ -481,94 +355,6 @@ export const PurchaseOrders: React.FC = () => {
           </div>
         </form>
       </Modal>
-
-      {/* PO Detail Modal */}
-      {selectedPO && (
-        <Modal
-          isOpen={isDetailOpen}
-          onClose={() => setIsDetailOpen(false)}
-          title={`Purchase Order: ${selectedPO.poId}`}
-          subtitle={`Supplier: ${selectedPO.supplierName} • Date: ${formatDate(selectedPO.orderDate)}`}
-          maxWidth="2xl"
-          icon={<FileSpreadsheet className="w-5 h-5 text-blue-400" />}
-        >
-          <div className="space-y-5">
-            <div className="flex items-center justify-between p-4 rounded-xl bg-slate-950/80 border border-slate-800">
-              <div>
-                <h4 className="text-base font-bold text-white">{selectedPO.supplierName}</h4>
-                <p className="text-xs text-slate-400 font-mono">Expected: {formatDate(selectedPO.expectedDeliveryDate)}</p>
-              </div>
-              <StatusBadge status={selectedPO.status} />
-            </div>
-
-            {/* Line Items Table */}
-            <div className="border border-slate-800 rounded-xl overflow-hidden text-xs">
-              <table className="w-full text-left">
-                <thead className="bg-slate-850 text-slate-400 font-semibold uppercase border-b border-slate-800">
-                  <tr>
-                    <th className="p-3">Product</th>
-                    <th className="p-3 text-right">Quantity</th>
-                    <th className="p-3 text-right">Unit Price</th>
-                    <th className="p-3 text-right">Subtotal</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800">
-                  {selectedPO.items.map((item, idx) => (
-                    <tr key={idx}>
-                      <td className="p-3 font-medium text-slate-200">{item.productName}</td>
-                      <td className="p-3 text-right font-mono text-slate-300">{item.quantity}</td>
-                      <td className="p-3 text-right font-mono text-slate-300">{formatCurrency(item.unitPrice)}</td>
-                      <td className="p-3 text-right font-mono font-semibold text-slate-100">{formatCurrency(item.subtotal)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="p-3.5 rounded-lg bg-slate-950/80 border border-slate-800 space-y-1.5 text-xs">
-              <div className="flex justify-between text-slate-300">
-                <span>Subtotal Amount:</span>
-                <span className="font-mono">{formatCurrency(selectedPO.subtotal)}</span>
-              </div>
-              <div className="flex justify-between text-slate-400">
-                <span>GST (18%):</span>
-                <span className="font-mono">{formatCurrency(selectedPO.tax)}</span>
-              </div>
-              <div className="flex justify-between font-bold text-sm text-white pt-1.5 border-t border-slate-800">
-                <span>Total PO Value:</span>
-                <span className="font-mono text-emerald-400 text-base">{formatCurrency(selectedPO.totalAmount)}</span>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between pt-3 border-t border-slate-800">
-              <div className="flex items-center gap-2">
-                {selectedPO.status === 'APPROVED' && (
-                  <Button
-                    variant="emerald"
-                    size="sm"
-                    onClick={() => handleStatusChange(selectedPO.poId, 'RECEIVED')}
-                    leftIcon={<PackageCheck className="w-4 h-4" />}
-                  >
-                    Receive Shipment & Update Stock
-                  </Button>
-                )}
-                {selectedPO.status === 'PENDING' && (
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={() => handleStatusChange(selectedPO.poId, 'APPROVED')}
-                  >
-                    Approve PO
-                  </Button>
-                )}
-              </div>
-              <Button variant="secondary" size="sm" onClick={() => setIsDetailOpen(false)}>
-                Close
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
     </div>
   );
 };

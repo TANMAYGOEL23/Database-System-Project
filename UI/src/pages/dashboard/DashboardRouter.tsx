@@ -4,11 +4,6 @@ import { AdminDashboard } from './AdminDashboard';
 import { EmployeeDashboard } from './EmployeeDashboard';
 
 export const DashboardRouter: React.FC = () => {
-  const { user } = useAuth();
-
-  if (user?.role === 'EMPLOYEE') {
-    return <EmployeeDashboard />;
-  }
-
-  return <AdminDashboard />;
+  const { isAdmin } = useAuth();
+  return isAdmin ? <AdminDashboard /> : <EmployeeDashboard />;
 };

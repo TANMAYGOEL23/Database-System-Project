@@ -6,9 +6,9 @@ export interface Machine {
   model: string;
   location: string;
   status: MachineStatus;
-  efficiency: number; // percentage e.g. 94.2
-  temperature: number; // Celsius
-  powerUsage: number; // kW
+  efficiency: number;
+  temperature: number;
+  powerUsage: number;
   lastMaintenance: string;
 }
 

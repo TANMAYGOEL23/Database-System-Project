@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, UserCheck, Edit2, Trash2, Mail, Phone, MapPin, DollarSign } from 'lucide-react';
+import { Plus, Edit2, Trash2, Users, Phone, Mail, MapPin, DollarSign } from 'lucide-react';
 import { DataTable, Column } from '../../components/tables/DataTable';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
@@ -42,7 +42,7 @@ export const Customers: React.FC = () => {
       const data = await customerService.getAll();
       setCustomers(data);
     } catch (e: any) {
-      showToast('error', 'Error Loading Customers', e.message);
+      showToast('error', 'Error Loading Clients', e.message);
     } finally {
       setIsLoading(false);
     }
@@ -60,25 +60,25 @@ export const Customers: React.FC = () => {
       phone: '',
       email: '',
       address: '',
-      city: '',
-      state: '',
-      gstNumber: `GST-US-TX-${Math.floor(100000 + Math.random() * 900000)}`,
+      city: 'Chicago',
+      state: 'IL',
+      gstNumber: `US-EIN-${Math.floor(100000000 + Math.random() * 900000000)}`,
     });
     setFormErrors({});
     setIsFormOpen(true);
   };
 
-  const handleOpenEdit = (cust: Customer) => {
+  const handleOpenEdit = (c: Customer) => {
     setIsEditing(true);
-    setSelectedCustomer(cust);
+    setSelectedCustomer(c);
     setFormData({
-      customerName: cust.customerName,
-      phone: cust.phone,
-      email: cust.email,
-      address: cust.address,
-      city: cust.city || '',
-      state: cust.state || '',
-      gstNumber: cust.gstNumber || '',
+      customerName: c.customerName,
+      phone: c.phone,
+      email: c.email,
+      address: c.address,
+      city: c.city || '',
+      state: c.state || '',
+      gstNumber: c.gstNumber || '',
     });
     setFormErrors({});
     setIsFormOpen(true);
@@ -86,15 +86,9 @@ export const Customers: React.FC = () => {
 
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
-    if (!formData.customerName.trim()) errors.customerName = 'Customer name is required';
-    if (!formData.phone.trim()) errors.phone = 'Phone number is required';
-    if (!formData.email.trim()) {
-      errors.email = 'Email is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      errors.email = 'Please enter a valid email address';
-    }
-    if (!formData.address.trim()) errors.address = 'Billing address is required';
-
+    if (!formData.customerName.trim()) errors.customerName = 'Customer client name is required';
+    if (!formData.email.trim()) errors.email = 'Valid corporate email is required';
+    if (!formData.phone.trim()) errors.phone = 'Contact phone is required';
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -105,12 +99,23 @@ export const Customers: React.FC = () => {
 
     try {
       setIsSubmitting(true);
+      const payload = {
+        customerName: formData.customerName,
+        phone: formData.phone,
+        email: formData.email,
+        address: formData.address,
+        city: formData.city,
+        state: formData.state,
+        gstNumber: formData.gstNumber,
+        status: 'ACTIVE' as const,
+      };
+
       if (isEditing && selectedCustomer) {
-        await customerService.update(selectedCustomer.customerId, formData);
-        showToast('success', 'Customer Updated', `${formData.customerName} saved successfully.`);
+        await customerService.update(selectedCustomer.customerId, payload);
+        showToast('success', 'Customer Updated', `${formData.customerName} records modified.`);
       } else {
-        await customerService.create(formData);
-        showToast('success', 'Customer Registered', `${formData.customerName} registered in directory.`);
+        await customerService.create(payload);
+        showToast('success', 'Client Onboarded', `${formData.customerName} registered into commercial CRM.`);
       }
 
       setIsFormOpen(false);
@@ -127,7 +132,7 @@ export const Customers: React.FC = () => {
     try {
       setIsSubmitting(true);
       await customerService.delete(selectedCustomer.customerId);
-      showToast('success', 'Customer Removed', `${selectedCustomer.customerName} was deleted.`);
+      showToast('success', 'Customer Deleted', `${selectedCustomer.customerName} removed.`);
       setIsDeleteOpen(false);
       loadData();
     } catch (err: any) {
@@ -140,43 +145,57 @@ export const Customers: React.FC = () => {
   const columns: Column<Customer>[] = [
     {
       key: 'customerId',
-      header: 'Customer ID',
+      header: 'Client ID',
       sortable: true,
-      render: (c) => <span className="font-mono font-semibold text-blue-400">{c.customerId}</span>,
+      render: (c) => <span className="font-mono text-xs font-semibold text-blue-400">{c.customerId}</span>,
     },
     {
       key: 'customerName',
-      header: 'Client Company Name',
+      header: 'Customer Enterprise',
       sortable: true,
       render: (c) => (
         <div>
-          <div className="font-semibold text-slate-100">{c.customerName}</div>
-          <div className="text-[11px] text-slate-400 truncate max-w-xs">{c.address}</div>
+          <div className="font-semibold text-slate-100 flex items-center gap-2">
+            <Users className="w-3.5 h-3.5 text-slate-400" />
+            {c.customerName}
+          </div>
+          <div className="text-[11px] font-mono text-slate-400">Tax ID: {c.gstNumber || 'N/A'}</div>
         </div>
       ),
     },
     {
-      key: 'phone',
-      header: 'Contact Phone',
-      render: (c) => <span className="font-mono text-xs text-slate-300">{c.phone}</span>,
+      key: 'contact',
+      header: 'Communication',
+      render: (c) => (
+        <div className="space-y-0.5 text-xs text-slate-300">
+          <div className="flex items-center gap-1.5">
+            <Phone className="w-3 h-3 text-slate-400" />
+            <span>{c.phone}</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-slate-400 text-[11px]">
+            <Mail className="w-3 h-3 text-slate-500" />
+            <span>{c.email}</span>
+          </div>
+        </div>
+      ),
     },
     {
-      key: 'email',
-      header: 'Billing Email',
-      render: (c) => <span className="font-mono text-xs text-slate-300">{c.email}</span>,
-    },
-    {
-      key: 'gstNumber',
-      header: 'Tax ID',
-      render: (c) => <span className="font-mono text-xs text-slate-400">{c.gstNumber || '—'}</span>,
+      key: 'address',
+      header: 'Billing Address',
+      render: (c) => (
+        <span className="text-xs text-slate-300 flex items-center gap-1 line-clamp-1">
+          <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          {c.address}, {c.city} {c.state}
+        </span>
+      ),
     },
     {
       key: 'totalPurchases',
-      header: 'Lifetime Order Value',
+      header: 'Cumulative Billing ($)',
       sortable: true,
       align: 'right',
       render: (c) => (
-        <span className="font-mono font-bold text-emerald-400">
+        <span className="font-mono font-bold text-xs text-emerald-400">
           {formatCurrency(c.totalPurchases || 0)}
         </span>
       ),
@@ -213,18 +232,14 @@ export const Customers: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-white tracking-tight">Enterprise Client & Customer Directory</h2>
+          <h2 className="text-2xl font-bold text-white tracking-tight">Enterprise Client & Customer Accounts</h2>
           <p className="text-xs text-slate-400 mt-1">
-            Maintain OEM clients, billing contacts, tax identification numbers, and order history.
+            Commercial account directory, order history volume, billing tax IDs, and corporate shipping endpoints.
           </p>
         </div>
 
-        <Button
-          variant="primary"
-          onClick={handleOpenCreate}
-          leftIcon={<Plus className="w-4 h-4" />}
-        >
-          Add Customer
+        <Button variant="primary" onClick={handleOpenCreate} leftIcon={<Plus className="w-4 h-4" />}>
+          Register Client
         </Button>
       </div>
 
@@ -232,86 +247,81 @@ export const Customers: React.FC = () => {
         data={customers}
         columns={columns}
         rowKey={(c) => c.customerId}
-        searchKey={(c) => `${c.customerId} ${c.customerName} ${c.email} ${c.phone}`}
-        searchPlaceholder="Search customers by name, ID, email..."
+        searchKey={(c) => `${c.customerId} ${c.customerName} ${c.email} ${c.city}`}
+        searchPlaceholder="Search client database by name, city, email..."
         isLoading={isLoading}
       />
 
-      {/* Create / Edit Modal */}
+      {/* Client Form Modal */}
       <Modal
         isOpen={isFormOpen}
         onClose={() => setIsFormOpen(false)}
-        title={isEditing ? `Edit Customer: ${selectedCustomer?.customerId}` : 'Register New Client'}
-        subtitle="PostgreSQL CUSTOMER relational table entity"
+        title={isEditing ? `Edit Client: ${selectedCustomer?.customerId}` : 'Onboard Commercial Client'}
+        subtitle="CUSTOMER relational schema account record"
         maxWidth="lg"
-        icon={<UserCheck className="w-5 h-5 text-blue-400" />}
+        icon={<Users className="w-5 h-5 text-blue-400" />}
       >
         <form onSubmit={handleFormSubmit} className="space-y-4">
           <Input
-            label="Company / Client Name"
+            label="Corporate / Enterprise Name"
             value={formData.customerName}
             onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
-            placeholder="e.g. Tesla Gigafactory Tier 2 Systems"
+            placeholder="e.g. Caterpillar Heavy Machinery Corp."
             error={formErrors.customerName}
             required
           />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
-              label="Contact Phone"
+              label="Business Phone"
               value={formData.phone}
               onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              placeholder="+1 (555) 000-0000"
+              placeholder="+1-800-445-9201"
               error={formErrors.phone}
               required
             />
             <Input
-              label="Billing Email Address"
+              label="Billing Email"
               type="email"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              placeholder="procurement@client.com"
+              placeholder="ap@caterpillar.com"
               error={formErrors.email}
               required
             />
           </div>
 
-          <Input
-            label="Corporate Billing Address"
-            value={formData.address}
-            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-            placeholder="Street address"
-            error={formErrors.address}
-            required
-          />
-
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Input
+              label="Tax ID / VAT / GST"
+              value={formData.gstNumber}
+              onChange={(e) => setFormData({ ...formData, gstNumber: e.target.value })}
+            />
             <Input
               label="City"
               value={formData.city}
               onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-              placeholder="Austin"
             />
             <Input
-              label="State / Region"
+              label="State / Province"
               value={formData.state}
               onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-              placeholder="TX"
-            />
-            <Input
-              label="Tax / GST ID"
-              value={formData.gstNumber}
-              onChange={(e) => setFormData({ ...formData, gstNumber: e.target.value })}
-              placeholder="GST-US-TX-000000"
             />
           </div>
+
+          <Input
+            label="Billing & Delivery Address"
+            value={formData.address}
+            onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+            placeholder="100 Caterpillar Way, Suite 400"
+          />
 
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
             <Button variant="secondary" onClick={() => setIsFormOpen(false)} type="button">
               Cancel
             </Button>
             <Button variant="primary" type="submit" isLoading={isSubmitting}>
-              {isEditing ? 'Save Changes' : 'Register Customer'}
+              {isEditing ? 'Save Client' : 'Onboard Client'}
             </Button>
           </div>
         </form>
@@ -321,8 +331,8 @@ export const Customers: React.FC = () => {
         isOpen={isDeleteOpen}
         onClose={() => setIsDeleteOpen(false)}
         onConfirm={handleDeleteConfirm}
-        title="Delete Customer"
-        message={`Are you sure you want to delete ${selectedCustomer?.customerName}?`}
+        title="Remove Customer Account"
+        message={`Delete client account for ${selectedCustomer?.customerName}? Invoicing history will remain archived.`}
         isLoading={isSubmitting}
       />
     </div>

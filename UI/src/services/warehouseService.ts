@@ -1,71 +1,54 @@
-import { apiClient, simulateLatency } from './api';
+import { delay } from './api';
+import { supabase, isSupabaseConfigured } from './supabase';
+import { mockStorage } from './mockStorage';
 import { Warehouse, Shelf } from '../types/inventory';
-import { mockDb } from './mockStorage';
+
+function mapWarehouseFromDb(row: any): Warehouse {
+  return {
+    warehouseId: row.warehouse_id || row.warehouseId,
+    warehouseName: row.warehouse_name || row.warehouseName,
+    location: row.location,
+    capacity: parseInt(row.capacity || 1000, 10),
+    currentOccupancy: parseInt(row.current_occupancy || row.currentOccupancy || 0, 10),
+    numberOfShelves: parseInt(row.number_of_shelves || row.numberOfShelves || 12, 10),
+    inventoryValue: parseFloat(row.inventory_value || row.inventoryValue || 0),
+    status: row.status,
+  };
+}
+
+function mapShelfFromDb(row: any): Shelf {
+  return {
+    shelfId: row.shelf_id || row.shelfId,
+    warehouseId: row.warehouse_id || row.warehouseId,
+    warehouseName: row.warehouse_name || row.warehouseName,
+    row: row.shelf_row || row.row,
+    column: row.shelf_column || row.column || row.col,
+    rfidTag: row.rfid_tag || row.rfidTag,
+    capacity: parseInt(row.capacity || 50, 10),
+    occupied: parseInt(row.occupied || 0, 10),
+  };
+}
 
 export const warehouseService = {
   async getAllWarehouses(): Promise<Warehouse[]> {
-    try {
-      const response = await apiClient.get<Warehouse[]>('/warehouses');
-      return response.data;
-    } catch {
-      await simulateLatency(200);
-      return mockDb.getWarehouses();
+    if (isSupabaseConfigured()) {
+      const { data, error } = await supabase.from('warehouses').select('*').order('warehouse_id');
+      if (error) throw new Error(error.message);
+      return (data || []).map(mapWarehouseFromDb);
     }
+
+    await delay(200);
+    return mockStorage.warehouses;
   },
 
-  async getShelves(): Promise<Shelf[]> {
-    try {
-      const response = await apiClient.get<Shelf[]>('/warehouses/shelves');
-      return response.data;
-    } catch {
-      await simulateLatency(150);
-      return mockDb.getShelves();
+  async getAllShelves(): Promise<Shelf[]> {
+    if (isSupabaseConfigured()) {
+      const { data, error } = await supabase.from('shelves').select('*').order('shelf_id');
+      if (error) throw new Error(error.message);
+      return (data || []).map(mapShelfFromDb);
     }
-  },
 
-  async createWarehouse(warehouse: Omit<Warehouse, 'warehouseId' | 'currentOccupancy'>): Promise<Warehouse> {
-    try {
-      const response = await apiClient.post<Warehouse>('/warehouses', warehouse);
-      return response.data;
-    } catch {
-      await simulateLatency(250);
-      const warehouses = mockDb.getWarehouses();
-      const newId = `WAR${String(warehouses.length + 1).padStart(3, '0')}`;
-      const newWh: Warehouse = {
-        ...warehouse,
-        warehouseId: newId,
-        currentOccupancy: 0,
-      };
-      mockDb.setWarehouses([...warehouses, newWh]);
-      return newWh;
-    }
-  },
-
-  async createShelf(shelf: Omit<Shelf, 'shelfId'>): Promise<Shelf> {
-    try {
-      const response = await apiClient.post<Shelf>('/warehouses/shelves', shelf);
-      return response.data;
-    } catch {
-      await simulateLatency(200);
-      const shelves = mockDb.getShelves();
-      const newId = `SHF${String(shelves.length + 1).padStart(3, '0')}`;
-      const newShelf: Shelf = {
-        ...shelf,
-        shelfId: newId,
-        rfidTag: shelf.rfidTag || `RFID-SHELF-${shelf.row}${shelf.column}`,
-      };
-      mockDb.setShelves([...shelves, newShelf]);
-      return newShelf;
-    }
-  },
-
-  async deleteShelf(shelfId: string): Promise<void> {
-    try {
-      await apiClient.delete(`/warehouses/shelves/${shelfId}`);
-    } catch {
-      await simulateLatency(150);
-      const shelves = mockDb.getShelves();
-      mockDb.setShelves(shelves.filter((s) => s.shelfId !== shelfId));
-    }
+    await delay(200);
+    return mockStorage.shelves;
   },
 };

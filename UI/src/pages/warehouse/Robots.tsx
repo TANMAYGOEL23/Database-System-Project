@@ -1,18 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Bot, BatteryCharging, BatteryMedium, MapPin, Activity, Play, Wrench, RefreshCw, Zap } from 'lucide-react';
+import { Bot, BatteryCharging, Battery, BatteryWarning, Navigation, RefreshCw, Play, CheckCircle2 } from 'lucide-react';
 import { DataTable, Column, FilterConfig } from '../../components/tables/DataTable';
-import { Button } from '../../components/ui/Button';
 import { StatusBadge } from '../../components/ui/StatusBadge';
+import { Button } from '../../components/ui/Button';
+import { SimulateRobotTaskModal } from '../../components/simulation/SimulateRobotTaskModal';
 import { useNotification } from '../../context/NotificationContext';
 import { robotService } from '../../services/robotService';
 import { Robot, RobotStatus } from '../../types/warehouse';
-import { SimulateRobotTaskModal } from '../../components/simulation/SimulateRobotTaskModal';
 
 export const Robots: React.FC = () => {
   const [robots, setRobots] = useState<Robot[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
-
+  const [isSimModalOpen, setIsSimModalOpen] = useState(false);
   const { showToast } = useNotification();
 
   const loadData = async () => {
@@ -21,7 +20,7 @@ export const Robots: React.FC = () => {
       const data = await robotService.getRobots();
       setRobots(data);
     } catch (e: any) {
-      showToast('error', 'Error Loading Robots', e.message);
+      showToast('error', 'Failed to load AMR fleet', e.message);
     } finally {
       setIsLoading(false);
     }
@@ -31,84 +30,37 @@ export const Robots: React.FC = () => {
     loadData();
   }, []);
 
-  const handleUpdateStatus = async (robot: Robot, newStatus: RobotStatus) => {
+  const handleStatusToggle = async (robotId: string, currentStatus: RobotStatus) => {
     try {
-      await robotService.updateRobotStatus(
-        robot.robotId,
-        newStatus,
-        newStatus === 'CHARGING' ? 100 : robot.battery
-      );
-      showToast('success', 'Robot State Updated', `${robot.robotName} status set to ${newStatus}`);
+      const nextStatus: RobotStatus = currentStatus === 'CHARGING' ? 'IDLE' : 'CHARGING';
+      await robotService.updateRobotStatus(robotId, nextStatus, nextStatus === 'CHARGING' ? 100 : undefined);
+      showToast('success', 'Robot Updated', `${robotId} switched to ${nextStatus}.`);
       loadData();
-    } catch (err: any) {
-      showToast('error', 'State Update Failed', err.message);
+    } catch (e: any) {
+      showToast('error', 'Update Failed', e.message);
     }
   };
 
   const columns: Column<Robot>[] = [
     {
       key: 'robotId',
-      header: 'Robot ID',
+      header: 'AMR Fleet ID',
       sortable: true,
-      render: (r) => <span className="font-mono font-semibold text-indigo-400">{r.robotId}</span>,
+      render: (r) => <span className="font-mono text-xs font-semibold text-blue-400">{r.robotId}</span>,
     },
     {
       key: 'robotName',
-      header: 'Fleet Unit & Model',
+      header: 'Robot Name & Chassis',
       sortable: true,
       render: (r) => (
         <div>
-          <div className="font-semibold text-slate-100 flex items-center gap-1.5">
+          <div className="font-semibold text-slate-100 flex items-center gap-2">
             <Bot className="w-4 h-4 text-indigo-400" />
             {r.robotName}
           </div>
-          <div className="text-[11px] font-mono text-slate-400">{r.model}</div>
+          <div className="text-[11px] font-mono text-slate-400">Model: {r.model}</div>
         </div>
       ),
-    },
-    {
-      key: 'battery',
-      header: 'Battery SoC',
-      sortable: true,
-      render: (r) => (
-        <div className="w-32">
-          <div className="flex justify-between text-[11px] font-mono text-slate-300 mb-1">
-            <span className="flex items-center gap-1">
-              {r.status === 'CHARGING' ? (
-                <BatteryCharging className="w-3.5 h-3.5 text-cyan-400" />
-              ) : (
-                <BatteryMedium className="w-3.5 h-3.5 text-slate-400" />
-              )}
-              {r.battery}%
-            </span>
-          </div>
-          <div className="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden">
-            <div
-              className={`h-full rounded-full ${
-                r.battery > 50 ? 'bg-emerald-500' : r.battery > 25 ? 'bg-amber-500' : 'bg-rose-500'
-              }`}
-              style={{ width: `${r.battery}%` }}
-            />
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: 'currentLocation',
-      header: 'Current Waypoint',
-      render: (r) => (
-        <div className="flex items-center gap-1.5 text-xs text-slate-300">
-          <MapPin className="w-3.5 h-3.5 text-slate-500" />
-          <span>{r.currentLocation}</span>
-        </div>
-      ),
-    },
-    {
-      key: 'totalTasksCompleted',
-      header: 'Completed Missions',
-      sortable: true,
-      align: 'right',
-      render: (r) => <span className="font-mono font-bold text-slate-200">{r.totalTasksCompleted}</span>,
     },
     {
       key: 'status',
@@ -117,42 +69,77 @@ export const Robots: React.FC = () => {
       render: (r) => <StatusBadge status={r.status} />,
     },
     {
+      key: 'battery',
+      header: 'Battery Level',
+      sortable: true,
+      align: 'right',
+      render: (r) => {
+        const isLow = r.battery < 25;
+        return (
+          <div className="text-right">
+            <div className="flex items-center justify-end gap-1.5 font-mono text-xs">
+              {r.status === 'CHARGING' ? (
+                <BatteryCharging className="w-4 h-4 text-emerald-400 animate-pulse" />
+              ) : isLow ? (
+                <BatteryWarning className="w-4 h-4 text-rose-400" />
+              ) : (
+                <Battery className="w-4 h-4 text-slate-300" />
+              )}
+              <span className={isLow ? 'text-rose-400 font-bold' : 'text-slate-200'}>{r.battery}%</span>
+            </div>
+            <div className="w-20 bg-slate-800 rounded-full h-1.5 ml-auto mt-1 overflow-hidden">
+              <div
+                className={`h-full rounded-full ${
+                  isLow ? 'bg-rose-500' : r.battery > 60 ? 'bg-emerald-500' : 'bg-amber-500'
+                }`}
+                style={{ width: `${r.battery}%` }}
+              />
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'currentLocation',
+      header: 'Current Waypoint',
+      render: (r) => (
+        <span className="text-xs text-slate-300 font-mono flex items-center gap-1">
+          <Navigation className="w-3 h-3 text-slate-400" />
+          {r.currentLocation}
+        </span>
+      ),
+    },
+    {
+      key: 'payloadCapacityKg',
+      header: 'Max Payload',
+      align: 'right',
+      render: (r) => <span className="font-mono text-xs text-slate-300">{r.payloadCapacityKg} kg</span>,
+    },
+    {
+      key: 'totalTasksCompleted',
+      header: 'Missions Completed',
+      sortable: true,
+      align: 'right',
+      render: (r) => (
+        <span className="font-mono text-xs font-bold text-emerald-400">
+          {r.totalTasksCompleted}
+        </span>
+      ),
+    },
+    {
       key: 'actions',
-      header: 'Command',
+      header: 'Controls',
       align: 'right',
       render: (r) => (
         <div className="flex items-center justify-end gap-1.5">
-          {r.status !== 'CHARGING' && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleUpdateStatus(r, 'CHARGING')}
-              leftIcon={<Zap className="w-3 h-3 text-cyan-400" />}
-              className="text-xs"
-            >
-              Dock & Charge
-            </Button>
-          )}
-          {r.status === 'CHARGING' && (
-            <Button
-              variant="emerald"
-              size="sm"
-              onClick={() => handleUpdateStatus(r, 'IDLE')}
-              className="text-xs"
-            >
-              Undock / Ready
-            </Button>
-          )}
-          {r.status !== 'MAINTENANCE' && (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => handleUpdateStatus(r, 'MAINTENANCE')}
-              className="text-xs"
-            >
-              Service
-            </Button>
-          )}
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => handleStatusToggle(r.robotId, r.status)}
+            leftIcon={r.status === 'CHARGING' ? <Play className="w-3 h-3" /> : <BatteryCharging className="w-3 h-3" />}
+          >
+            {r.status === 'CHARGING' ? 'Deploy' : 'Dock & Charge'}
+          </Button>
         </div>
       ),
     },
@@ -163,10 +150,10 @@ export const Robots: React.FC = () => {
       key: 'status',
       label: 'Fleet Status',
       options: [
-        { label: 'Idle / Available', value: 'IDLE' },
+        { label: 'Idle / Ready', value: 'IDLE' },
         { label: 'Busy on Mission', value: 'BUSY' },
-        { label: 'Charging at Dock', value: 'CHARGING' },
-        { label: 'In Maintenance', value: 'MAINTENANCE' },
+        { label: 'Docked & Charging', value: 'CHARGING' },
+        { label: 'Under Maintenance', value: 'MAINTENANCE' },
       ],
     },
   ];
@@ -175,19 +162,28 @@ export const Robots: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-white tracking-tight">Autonomous Mobile Robot (AMR / AGV) Fleet</h2>
+          <h2 className="text-2xl font-bold text-white tracking-tight">Autonomous Mobile Robots (AMR Fleet)</h2>
           <p className="text-xs text-slate-400 mt-1">
-            Software-simulated automated guided vehicles for warehouse shelf pallet transfers and CNC material delivery.
+            LiDAR navigation telemetry, payload capacity, battery health, and autonomous dispatch controls.
           </p>
         </div>
 
-        <Button
-          variant="primary"
-          onClick={() => setIsTaskModalOpen(true)}
-          leftIcon={<Bot className="w-4 h-4" />}
-        >
-          Dispatch AMR Mission
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button
+            variant="secondary"
+            onClick={loadData}
+            leftIcon={<RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />}
+          >
+            Refresh Fleet
+          </Button>
+          <Button
+            variant="primary"
+            onClick={() => setIsSimModalOpen(true)}
+            leftIcon={<Bot className="w-4 h-4" />}
+          >
+            Simulate AMR Mission
+          </Button>
+        </div>
       </div>
 
       <DataTable
@@ -195,14 +191,14 @@ export const Robots: React.FC = () => {
         columns={columns}
         rowKey={(r) => r.robotId}
         searchKey={(r) => `${r.robotId} ${r.robotName} ${r.model} ${r.currentLocation}`}
-        searchPlaceholder="Search robot fleet..."
+        searchPlaceholder="Search robots by chassis ID or model..."
         filters={filters}
         isLoading={isLoading}
       />
 
       <SimulateRobotTaskModal
-        isOpen={isTaskModalOpen}
-        onClose={() => setIsTaskModalOpen(false)}
+        isOpen={isSimModalOpen}
+        onClose={() => setIsSimModalOpen(false)}
         onSuccess={loadData}
       />
     </div>

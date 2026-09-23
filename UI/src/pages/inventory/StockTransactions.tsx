@@ -1,28 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { History, ArrowDownLeft, ArrowUpRight, Bot, SlidersHorizontal, Factory, ShoppingCart } from 'lucide-react';
+import { ArrowLeftRight, ArrowDownLeft, ArrowUpRight, Cpu, Bot, RefreshCw } from 'lucide-react';
 import { DataTable, Column, FilterConfig } from '../../components/tables/DataTable';
 import { StatusBadge } from '../../components/ui/StatusBadge';
+import { Button } from '../../components/ui/Button';
+import { useNotification } from '../../context/NotificationContext';
 import { inventoryService } from '../../services/inventoryService';
-import { warehouseService } from '../../services/warehouseService';
-import { StockTransaction, Warehouse } from '../../types/inventory';
-import { formatDateTime } from '../../utils/formatters';
+import { StockTransaction, StockTransactionType } from '../../types/inventory';
+import { formatDate } from '../../utils/formatters';
 
 export const StockTransactions: React.FC = () => {
   const [transactions, setTransactions] = useState<StockTransaction[]>([]);
-  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { showToast } = useNotification();
 
   const loadData = async () => {
     try {
       setIsLoading(true);
-      const [txns, whs] = await Promise.all([
-        inventoryService.getTransactions(),
-        warehouseService.getAllWarehouses(),
-      ]);
-      setTransactions(txns);
-      setWarehouses(whs);
-    } catch (e) {
-      console.error(e);
+      const data = await inventoryService.getTransactions();
+      setTransactions(data);
+    } catch (e: any) {
+      showToast('error', 'Error Loading Stock Transactions', e.message);
     } finally {
       setIsLoading(false);
     }
@@ -32,32 +29,56 @@ export const StockTransactions: React.FC = () => {
     loadData();
   }, []);
 
-  const getTxnIcon = (type: StockTransaction['transactionType']) => {
+  const getTxnBadge = (type: StockTransactionType) => {
     switch (type) {
       case 'PURCHASE':
-        return <ArrowDownLeft className="w-3.5 h-3.5 text-emerald-400" />;
-      case 'SALE':
-        return <ArrowUpRight className="w-3.5 h-3.5 text-rose-400" />;
+        return (
+          <span className="px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-emerald-950 text-emerald-300 border border-emerald-800/60 flex items-center gap-1 w-fit">
+            <ArrowDownLeft className="w-3 h-3 text-emerald-400" />
+            PURCHASE (IN)
+          </span>
+        );
       case 'PRODUCTION':
-        return <Factory className="w-3.5 h-3.5 text-cyan-400" />;
+        return (
+          <span className="px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-blue-950 text-blue-300 border border-blue-800/60 flex items-center gap-1 w-fit">
+            <Cpu className="w-3 h-3 text-blue-400" />
+            PRODUCTION (IN)
+          </span>
+        );
+      case 'SALE':
+        return (
+          <span className="px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-rose-950 text-rose-300 border border-rose-800/60 flex items-center gap-1 w-fit">
+            <ArrowUpRight className="w-3 h-3 text-rose-400" />
+            DISPATCH / SALE (OUT)
+          </span>
+        );
       case 'ROBOT_MOVEMENT':
-        return <Bot className="w-3.5 h-3.5 text-indigo-400" />;
-      case 'ADJUSTMENT':
+        return (
+          <span className="px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-indigo-950 text-indigo-300 border border-indigo-800/60 flex items-center gap-1 w-fit">
+            <Bot className="w-3 h-3 text-indigo-400" />
+            AMR INTERNAL MOVE
+          </span>
+        );
       default:
-        return <SlidersHorizontal className="w-3.5 h-3.5 text-amber-400" />;
+        return (
+          <span className="px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-amber-950 text-amber-300 border border-amber-800/60 flex items-center gap-1 w-fit">
+            <ArrowLeftRight className="w-3 h-3 text-amber-400" />
+            RECONCILIATION
+          </span>
+        );
     }
   };
 
   const columns: Column<StockTransaction>[] = [
     {
       key: 'transactionId',
-      header: 'Txn ID',
+      header: 'Transaction ID',
       sortable: true,
-      render: (t) => <span className="font-mono font-semibold text-blue-400">{t.transactionId}</span>,
+      render: (t) => <span className="font-mono text-xs font-semibold text-blue-400">{t.transactionId}</span>,
     },
     {
       key: 'productName',
-      header: 'Product Item',
+      header: 'Product / SKU Item',
       sortable: true,
       render: (t) => (
         <div>
@@ -67,48 +88,46 @@ export const StockTransactions: React.FC = () => {
       ),
     },
     {
-      key: 'warehouseName',
-      header: 'Warehouse Facility',
-      sortable: true,
-      render: (t) => <span className="text-slate-300 text-xs">{t.warehouseName}</span>,
-    },
-    {
       key: 'transactionType',
-      header: 'Type',
+      header: 'Transaction Event',
       sortable: true,
-      render: (t) => (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider bg-slate-800 border border-slate-700 text-slate-200">
-          {getTxnIcon(t.transactionType)}
-          {t.transactionType.replace(/_/g, ' ')}
-        </span>
-      ),
+      render: (t) => getTxnBadge(t.transactionType),
     },
     {
       key: 'quantity',
-      header: 'Quantity Flow',
+      header: 'Quantity Delta',
       sortable: true,
       align: 'right',
       render: (t) => (
-        <span className={`font-mono font-bold text-sm ${t.quantity > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-          {t.quantity > 0 ? `+${t.quantity}` : t.quantity}
+        <span
+          className={`font-mono font-bold text-xs ${
+            t.quantity > 0 ? 'text-emerald-400' : t.quantity < 0 ? 'text-rose-400' : 'text-slate-400'
+          }`}
+        >
+          {t.quantity > 0 ? `+${t.quantity}` : t.quantity} Units
         </span>
       ),
     },
     {
+      key: 'warehouseName',
+      header: 'Warehouse Hub',
+      render: (t) => <span className="text-xs text-slate-300">{t.warehouseName}</span>,
+    },
+    {
       key: 'reference',
-      header: 'Document Reference',
+      header: 'Audit Reference',
       render: (t) => (
-        <div>
-          <span className="font-mono text-xs text-slate-300 font-semibold">{t.reference}</span>
-          {t.notes && <p className="text-[10px] text-slate-400 line-clamp-1">{t.notes}</p>}
+        <div className="text-xs">
+          <span className="font-mono text-slate-200">{t.reference}</span>
+          {t.notes && <div className="text-[11px] text-slate-400">{t.notes}</div>}
         </div>
       ),
     },
     {
       key: 'date',
-      header: 'Audit Timestamp',
+      header: 'Timestamp',
       sortable: true,
-      render: (t) => <span className="font-mono text-xs text-slate-400">{formatDateTime(t.date)}</span>,
+      render: (t) => <span className="font-mono text-xs text-slate-400">{formatDate(t.date)}</span>,
     },
   ];
 
@@ -117,35 +136,40 @@ export const StockTransactions: React.FC = () => {
       key: 'transactionType',
       label: 'Transaction Type',
       options: [
-        { label: 'Purchase Inward', value: 'PURCHASE' },
-        { label: 'Production Output', value: 'PRODUCTION' },
-        { label: 'Customer Sale Outward', value: 'SALE' },
-        { label: 'Robot AGV Movement', value: 'ROBOT_MOVEMENT' },
-        { label: 'Cycle Adjustment', value: 'ADJUSTMENT' },
+        { label: 'Purchase Receipt', value: 'PURCHASE' },
+        { label: 'Production Completion', value: 'PRODUCTION' },
+        { label: 'Sale Dispatch', value: 'SALE' },
+        { label: 'AMR Robot Transfer', value: 'ROBOT_MOVEMENT' },
+        { label: 'Manual Adjustment', value: 'ADJUSTMENT' },
       ],
-    },
-    {
-      key: 'warehouseName',
-      label: 'Warehouse',
-      options: warehouses.map((w) => ({ label: w.warehouseName, value: w.warehouseName })),
     },
   ];
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-white tracking-tight">Stock Transaction Audit Ledger</h2>
-        <p className="text-xs text-slate-400 mt-1">
-          Immutable double-entry inventory movement logs: Purchase Receipts, Manufacturing Runs, AMR Movements, and Sales.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-white tracking-tight">Material Movement & Audit Ledger</h2>
+          <p className="text-xs text-slate-400 mt-1">
+            Immutable log of all physical inventory movements (Purchases, Manufacturing runs, AMR shuttles, Dispatches).
+          </p>
+        </div>
+
+        <Button
+          variant="secondary"
+          onClick={loadData}
+          leftIcon={<RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />}
+        >
+          Refresh Audit Ledger
+        </Button>
       </div>
 
       <DataTable
         data={transactions}
         columns={columns}
         rowKey={(t) => t.transactionId}
-        searchKey={(t) => `${t.transactionId} ${t.productName} ${t.reference} ${t.warehouseName}`}
-        searchPlaceholder="Search transactions by ID, product, reference..."
+        searchKey={(t) => `${t.transactionId} ${t.productName} ${t.productId} ${t.reference} ${t.warehouseName}`}
+        searchPlaceholder="Filter movements by SKU, reference, or order number..."
         filters={filters}
         isLoading={isLoading}
       />

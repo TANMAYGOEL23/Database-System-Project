@@ -16,7 +16,7 @@ export interface Warehouse {
   warehouseId: string;
   warehouseName: string;
   location: string;
-  capacity: number; // e.g. pallet count
+  capacity: number;
   currentOccupancy?: number;
   numberOfShelves: number;
   inventoryValue: number;
@@ -29,7 +29,7 @@ export interface Shelf {
   warehouseName?: string;
   row: string;
   column: string;
-  rfidTag: string; // Software simulated RFID
+  rfidTag: string;
   capacity?: number;
   occupied?: number;
 }

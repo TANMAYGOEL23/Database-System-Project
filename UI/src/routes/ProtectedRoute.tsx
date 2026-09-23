@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { UserRole } from '../types/auth';
 import { LoadingSpinner } from '../components/feedback/LoadingSpinner';
 
-interface ProtectedRouteProps {
+export interface ProtectedRouteProps {
   requiredRole?: UserRole;
 }
 
@@ -14,8 +14,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ requiredRole }) 
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <LoadingSpinner message="Verifying ERP security credentials..." size="lg" />
+      <div className="h-screen w-screen flex items-center justify-center bg-slate-950">
+        <LoadingSpinner message="Verifying factory security credentials..." size="lg" />
       </div>
     );
   }
@@ -24,7 +24,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ requiredRole }) 
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (requiredRole && user.role !== requiredRole && user.role !== 'ADMIN') {
+  if (requiredRole && user.role !== requiredRole) {
     return <Navigate to="/unauthorized" replace />;
   }
 

@@ -1,20 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Activity, Zap, Plus, RefreshCw, Thermometer, Wind, Eye } from 'lucide-react';
+import { Activity, Radio, Thermometer, Wind, Zap, RefreshCw, SlidersHorizontal } from 'lucide-react';
 import { DataTable, Column, FilterConfig } from '../../components/tables/DataTable';
-import { Button } from '../../components/ui/Button';
 import { StatusBadge } from '../../components/ui/StatusBadge';
+import { Button } from '../../components/ui/Button';
 import { SimulateSensorModal } from '../../components/simulation/SimulateSensorModal';
 import { useNotification } from '../../context/NotificationContext';
 import { sensorService } from '../../services/sensorService';
 import { Sensor, SensorType } from '../../types/iot';
-import { useNavigate } from 'react-router-dom';
+import { formatDate } from '../../utils/formatters';
 
 export const Sensors: React.FC = () => {
-  const navigate = useNavigate();
   const [sensors, setSensors] = useState<Sensor[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSimulateOpen, setIsSimulateOpen] = useState(false);
-
+  const [isSimModalOpen, setIsSimModalOpen] = useState(false);
   const { showToast } = useNotification();
 
   const loadData = async () => {
@@ -33,12 +31,26 @@ export const Sensors: React.FC = () => {
     loadData();
   }, []);
 
+  const getSensorIcon = (type: SensorType) => {
+    switch (type) {
+      case 'TEMPERATURE':
+        return <Thermometer className="w-3.5 h-3.5 text-amber-400" />;
+      case 'HUMIDITY':
+      case 'GAS':
+        return <Wind className="w-3.5 h-3.5 text-blue-400" />;
+      case 'POWER':
+        return <Zap className="w-3.5 h-3.5 text-yellow-400" />;
+      default:
+        return <Activity className="w-3.5 h-3.5 text-indigo-400" />;
+    }
+  };
+
   const columns: Column<Sensor>[] = [
     {
       key: 'sensorId',
-      header: 'Sensor ID',
+      header: 'Node ID',
       sortable: true,
-      render: (s) => <span className="font-mono font-semibold text-cyan-400">{s.sensorId}</span>,
+      render: (s) => <span className="font-mono text-xs font-semibold text-blue-400">{s.sensorId}</span>,
     },
     {
       key: 'sensorName',
@@ -46,86 +58,69 @@ export const Sensors: React.FC = () => {
       sortable: true,
       render: (s) => (
         <div>
-          <div className="font-semibold text-slate-100">{s.sensorName}</div>
+          <div className="font-semibold text-slate-100 flex items-center gap-2">
+            {getSensorIcon(s.sensorType)}
+            {s.sensorName}
+          </div>
           <div className="text-[11px] font-mono text-slate-400">{s.sensorType} • {s.location}</div>
         </div>
       ),
     },
     {
       key: 'lastReading',
-      header: 'Live Telemetry Reading',
+      header: 'Live Telemetry Value',
       sortable: true,
       align: 'right',
       render: (s) => (
-        <span className={`font-mono font-bold text-sm ${
-          s.status === 'CRITICAL'
-            ? 'text-rose-400'
-            : s.status === 'WARNING'
-            ? 'text-amber-400'
-            : 'text-emerald-400'
-        }`}>
-          {s.lastReading} {s.unit}
+        <span className="font-mono font-bold text-sm text-emerald-400">
+          {s.lastReading.toFixed(1)} <span className="text-xs font-normal text-slate-400">{s.unit}</span>
         </span>
       ),
     },
     {
       key: 'thresholds',
-      header: 'Operating Safe Bounds',
+      header: 'Threshold Boundaries',
+      align: 'right',
       render: (s) => (
         <span className="font-mono text-xs text-slate-400">
-          [{s.minThreshold} — {s.maxThreshold} {s.unit}]
+          [{s.minThreshold} - {s.maxThreshold} {s.unit}]
         </span>
       ),
     },
     {
-      key: 'lastUpdated',
-      header: 'Last Packet',
-      sortable: true,
-      render: (s) => <span className="font-mono text-xs text-slate-400">{s.lastUpdated.split(' ')[1] || s.lastUpdated}</span>,
-    },
-    {
       key: 'status',
-      header: 'Telemetry Status',
+      header: 'Node Health',
       sortable: true,
       render: (s) => <StatusBadge status={s.status} />,
     },
     {
-      key: 'actions',
-      header: 'Actions',
-      align: 'right',
-      render: (s) => (
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => navigate('/iot/data')}
-          leftIcon={<Activity className="w-3.5 h-3.5 text-cyan-400" />}
-        >
-          View Data
-        </Button>
-      ),
+      key: 'lastUpdated',
+      header: 'Last Heartbeat',
+      sortable: true,
+      render: (s) => <span className="font-mono text-xs text-slate-400">{formatDate(s.lastUpdated)}</span>,
     },
   ];
 
   const filters: FilterConfig[] = [
     {
-      key: 'sensorType',
-      label: 'Sensor Types',
+      key: 'status',
+      label: 'Telemetry Health',
       options: [
-        { label: 'Temperature', value: 'TEMPERATURE' },
-        { label: 'Humidity', value: 'HUMIDITY' },
-        { label: 'Gas / Sniffer', value: 'GAS' },
-        { label: 'Vibration', value: 'VIBRATION' },
-        { label: 'Power Draw', value: 'POWER' },
-        { label: 'Optical Inventory', value: 'INVENTORY' },
+        { label: 'Online', value: 'ONLINE' },
+        { label: 'Warning', value: 'WARNING' },
+        { label: 'Critical Alert', value: 'CRITICAL' },
+        { label: 'Offline', value: 'OFFLINE' },
       ],
     },
     {
-      key: 'status',
-      label: 'Status',
+      key: 'sensorType',
+      label: 'Sensor Metric',
       options: [
-        { label: 'Online Nominal', value: 'ONLINE' },
-        { label: 'Warning Warning', value: 'WARNING' },
-        { label: 'Critical Threshold', value: 'CRITICAL' },
+        { label: 'Temperature', value: 'TEMPERATURE' },
+        { label: 'Humidity', value: 'HUMIDITY' },
+        { label: 'Gas / Air Quality', value: 'GAS' },
+        { label: 'Vibration', value: 'VIBRATION' },
+        { label: 'Power Draw', value: 'POWER' },
       ],
     },
   ];
@@ -134,26 +129,26 @@ export const Sensors: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-white tracking-tight">Plant Environmental & IoT Sensors</h2>
+          <h2 className="text-2xl font-bold text-white tracking-tight">IoT Environmental & Machinery Telemetry</h2>
           <p className="text-xs text-slate-400 mt-1">
-            Software-simulated sensor nodes: Spindle Thermal Probes, Hydraulic Vibration, Battery VOC Gas, and Power Meters.
+            Distributed sensor grid monitoring HVAC, hydraulic temperature, vibration harmonics, and gas safety.
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-3">
           <Button
-            variant="outline"
-            onClick={() => navigate('/iot/data')}
-            leftIcon={<Activity className="w-4 h-4" />}
+            variant="secondary"
+            onClick={loadData}
+            leftIcon={<RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />}
           >
-            Telemetry History
+            Refresh Heartbeat
           </Button>
           <Button
-            variant="industrial"
-            onClick={() => setIsSimulateOpen(true)}
-            leftIcon={<Zap className="w-4 h-4" />}
+            variant="primary"
+            onClick={() => setIsSimModalOpen(true)}
+            leftIcon={<Radio className="w-4 h-4" />}
           >
-            Simulate Telemetry Reading
+            Simulate IoT Telemetry
           </Button>
         </div>
       </div>
@@ -162,15 +157,15 @@ export const Sensors: React.FC = () => {
         data={sensors}
         columns={columns}
         rowKey={(s) => s.sensorId}
-        searchKey={(s) => `${s.sensorId} ${s.sensorName} ${s.sensorType} ${s.location}`}
-        searchPlaceholder="Search sensors by ID, name, zone..."
+        searchKey={(s) => `${s.sensorId} ${s.sensorName} ${s.location} ${s.sensorType}`}
+        searchPlaceholder="Search sensor nodes by name, ID, or zone..."
         filters={filters}
         isLoading={isLoading}
       />
 
       <SimulateSensorModal
-        isOpen={isSimulateOpen}
-        onClose={() => setIsSimulateOpen(false)}
+        isOpen={isSimModalOpen}
+        onClose={() => setIsSimModalOpen(false)}
         onSuccess={loadData}
       />
     </div>

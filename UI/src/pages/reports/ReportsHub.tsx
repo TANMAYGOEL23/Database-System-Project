@@ -1,213 +1,190 @@
 import React, { useState, useEffect } from 'react';
-import {
-  PieChart,
-  FileSpreadsheet,
-  Download,
-  Printer,
-  Calendar,
-  Filter,
-  Layers,
-  Boxes,
-  Truck,
-  ShoppingCart,
-  Factory,
-  CalendarCheck2,
-  Receipt,
-  DollarSign,
-  Activity,
-  Bot,
-  ArrowRight,
-  TrendingUp,
-} from 'lucide-react';
+import { FileText, Download, Printer, Filter, RefreshCw, BarChart3, TrendingUp, Layers, CheckCircle } from 'lucide-react';
+import { DataTable, Column } from '../../components/tables/DataTable';
 import { Button } from '../../components/ui/Button';
-import { LoadingSpinner } from '../../components/feedback/LoadingSpinner';
-import { StatusBadge } from '../../components/ui/StatusBadge';
+import { Select } from '../../components/ui/Select';
+import { StatCard } from '../../components/ui/StatCard';
 import { useNotification } from '../../context/NotificationContext';
 import { reportService, GeneratedReport } from '../../services/reportService';
-import { formatCurrency, formatDate } from '../../utils/formatters';
 
-const REPORT_TABS = [
-  { id: 'inventory', label: 'Inventory Valuation', icon: <Boxes className="w-4 h-4" /> },
-  { id: 'low_stock', label: 'Low Stock & Reorder', icon: <Layers className="w-4 h-4" /> },
-  { id: 'purchases', label: 'Procurement Orders', icon: <Truck className="w-4 h-4" /> },
-  { id: 'sales', label: 'Sales & Invoicing', icon: <ShoppingCart className="w-4 h-4" /> },
-  { id: 'production', label: 'Production Efficiency', icon: <Factory className="w-4 h-4" /> },
-  { id: 'attendance', label: 'Workforce Attendance', icon: <CalendarCheck2 className="w-4 h-4" /> },
-  { id: 'payroll', label: 'Payroll Disbursements', icon: <Receipt className="w-4 h-4" /> },
-  { id: 'financials', label: 'Revenue vs OPEX (P&L)', icon: <DollarSign className="w-4 h-4" /> },
-  { id: 'iot_alerts', label: 'IoT Incident Telemetry', icon: <Activity className="w-4 h-4" /> },
-  { id: 'robots', label: 'AMR Fleet Missions', icon: <Bot className="w-4 h-4" /> },
+const REPORT_TYPES = [
+  { label: 'Plant Inventory Valuation & Stock Balance', value: 'inventory' },
+  { label: 'Critical Low Stock & Supply Reorder Triggers', value: 'low_stock' },
+  { label: 'Vendor Procurement & Purchase Orders Summary', value: 'purchases' },
+  { label: 'Commercial Invoicing & Sales Revenue Audit', value: 'sales' },
+  { label: 'Plant Manufacturing Output & Work Order Yields', value: 'production' },
+  { label: 'Plant Workforce Attendance & Gate Turnstile Audit', value: 'attendance' },
+  { label: 'Factory Workforce Payroll & Compensation Ledger', value: 'payroll' },
+  { label: 'Profit & Loss (P&L) Operating Financials', value: 'financials' },
+  { label: 'Environmental & Machine Telemetry Alarms', value: 'iot_alerts' },
+  { label: 'Autonomous Mobile Robot (AMR) Mission Efficiency', value: 'robots' },
 ];
 
 export const ReportsHub: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<string>('inventory');
+  const [selectedReportType, setSelectedReportType] = useState('inventory');
   const [report, setReport] = useState<GeneratedReport | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-
   const { showToast } = useNotification();
 
-  const loadReport = async (tabId: string) => {
+  const loadReport = async (type: string) => {
     try {
       setIsLoading(true);
-      const data = await reportService.generateReport(tabId);
+      const data = await reportService.generateReport(type);
       setReport(data);
     } catch (e: any) {
-      showToast('error', 'Error Generating Report', e.message);
+      showToast('error', 'Report Generation Failed', e.message);
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    loadReport(activeTab);
-  }, [activeTab]);
+    loadReport(selectedReportType);
+  }, [selectedReportType]);
 
   const handleExportCSV = () => {
-    if (!report) return;
-    showToast(
-      'success',
-      'CSV Export Generated',
-      `${report.title} exported as CSV spreadsheet (simulated download).`
+    if (!report || !report.data || report.data.length === 0) {
+      showToast('info', 'No Data', 'No records available to export.');
+      return;
+    }
+
+    const headers = report.columns.map((c) => c.label).join(',');
+    const rows = report.data.map((row) =>
+      report.columns
+        .map((c) => {
+          const val = row[c.key] !== undefined ? row[c.key] : '';
+          return `"${String(val).replace(/"/g, '""')}"`;
+        })
+        .join(',')
     );
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers, ...rows].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `${report.id}_${selectedReportType}_${Date.now()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast('success', 'CSV Exported', `Downloaded ${report.title}.csv`);
   };
 
   const handlePrint = () => {
-    showToast('info', 'Print Spooler Ready', `Sending ${report?.title} to plant network printer.`);
+    window.print();
   };
+
+  const dynamicColumns: Column<any>[] = (report?.columns || []).map((col) => ({
+    key: col.key,
+    header: col.label,
+    sortable: true,
+    render: (row: any) => {
+      const val = row[col.key];
+      if (typeof val === 'number') {
+        return <span className="font-mono text-xs text-slate-200">{val.toLocaleString()}</span>;
+      }
+      return <span className="text-xs text-slate-300">{String(val || '—')}</span>;
+    },
+  }));
 
   return (
     <div className="space-y-6">
-      {/* Top Banner */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-white tracking-tight">Executive Industrial Reports & Analytics Hub</h2>
+          <h2 className="text-2xl font-bold text-white tracking-tight">Executive BI Analytics & SQL Query Reports</h2>
           <p className="text-xs text-slate-400 mt-1">
-            Standard 10-report audit suite querying across all PostgreSQL ERP relational schemas.
+            Aggregated relational reports across ERP manufacturing, supply chain, workforce, and financial ledgers.
           </p>
         </div>
 
         <div className="flex items-center gap-2.5">
           <Button
-            variant="outline"
+            variant="secondary"
+            onClick={() => loadReport(selectedReportType)}
+            leftIcon={<RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />}
+          >
+            Re-Query DB
+          </Button>
+          <Button
+            variant="secondary"
             onClick={handlePrint}
             leftIcon={<Printer className="w-4 h-4" />}
           >
-            Print Report
+            Print
           </Button>
           <Button
             variant="primary"
             onClick={handleExportCSV}
             leftIcon={<Download className="w-4 h-4" />}
           >
-            Export to CSV
+            Export CSV
           </Button>
         </div>
       </div>
 
-      {/* 10 Report Type Tabs */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-slate-800 scrollbar-none">
-        {REPORT_TABS.map((tab) => {
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
-                isActive
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
-                  : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
-              }`}
-            >
-              {tab.icon}
-              <span>{tab.label}</span>
-            </button>
-          );
-        })}
+      {/* Selector Toolbar */}
+      <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-4">
+        <div className="w-full sm:w-96">
+          <Select
+            label="Select SQL Report Engine"
+            value={selectedReportType}
+            onChange={(e) => setSelectedReportType(e.target.value)}
+            options={REPORT_TYPES}
+          />
+        </div>
+        <div className="sm:mt-5 text-xs text-slate-400">
+          Generated: <span className="font-mono text-slate-200">{report?.generatedAt || 'Just now'}</span> | ID: <span className="font-mono text-blue-400">{report?.id}</span>
+        </div>
       </div>
 
-      {/* Main Report Container */}
-      {isLoading ? (
-        <div className="py-20 flex justify-center">
-          <LoadingSpinner message="Aggregating relational dataset and computing metrics..." size="lg" />
+      {/* Summary KPI Cards */}
+      {report?.summaryMetrics && report.summaryMetrics.length > 0 && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {report.summaryMetrics.map((m, idx) => (
+            <StatCard
+              key={idx}
+              title={m.label}
+              value={String(m.value)}
+              icon={<BarChart3 className="w-5 h-5 text-blue-400" />}
+            />
+          ))}
         </div>
-      ) : report ? (
-        <div className="space-y-6">
-          {/* Report Summary Card */}
-          <div className="rounded-xl border border-slate-800 bg-slate-900 p-6 shadow-xl space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-4">
-              <div>
-                <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-blue-400">
-                  {report.category} Domain Report
-                </span>
-                <h3 className="text-xl font-bold text-white tracking-tight mt-0.5">{report.title}</h3>
-              </div>
-              <div className="text-left sm:text-right font-mono text-xs text-slate-400">
-                <p>Generated: {report.generatedAt}</p>
-                <p className="text-emerald-400 font-semibold">PostgreSQL Relational View Ready</p>
-              </div>
-            </div>
+      )}
 
-            {/* Metric KPI Chips */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
-              {report.summaryMetrics.map((m, idx) => (
-                <div
-                  key={idx}
-                  className="p-3.5 rounded-lg bg-slate-950/80 border border-slate-800 space-y-1"
-                >
-                  <span className="text-xs text-slate-400">{m.label}</span>
-                  <p className="font-mono text-lg font-bold text-slate-100">{m.value}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Report Data Table */}
-          <div className="rounded-xl border border-slate-800 bg-slate-900 shadow-xl overflow-hidden">
-            <div className="p-4 border-b border-slate-800 bg-slate-950/80 flex items-center justify-between">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300">
-                Detailed Report Records ({report.data.length} Rows)
-              </h4>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-950 text-slate-400 font-semibold uppercase border-b border-slate-800">
-                  <tr>
-                    {report.columns.map((col) => (
-                      <th key={col.key} className="p-3.5">
-                        {col.label}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800 font-normal">
-                  {report.data.map((row, rIdx) => (
-                    <tr key={rIdx} className="hover:bg-slate-800/40 transition-colors">
-                      {report.columns.map((col) => {
-                        const val = row[col.key];
-
-                        return (
-                          <td key={col.key} className="p-3.5 whitespace-nowrap text-slate-200">
-                            {col.key === 'status' || col.key === 'stockStatus' ? (
-                              <StatusBadge status={String(val || '')} />
-                            ) : typeof val === 'number' && (col.key.toLowerCase().includes('amount') || col.key.toLowerCase().includes('salary') || col.key.toLowerCase().includes('price')) ? (
-                              <span className="font-mono text-emerald-400 font-semibold">
-                                {formatCurrency(val)}
-                              </span>
-                            ) : (
-                              String(val ?? '—')
-                            )}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      {/* Data Table */}
+      {report && (
+        <DataTable
+          data={report.data || []}
+          columns={dynamicColumns}
+          rowKey={(row: any) =>
+            row.id ||
+            row.product_id ||
+            row.productId ||
+            row.po_id ||
+            row.poId ||
+            row.invoice_id ||
+            row.invoiceId ||
+            row.data_id ||
+            row.dataId ||
+            row.alert_id ||
+            row.alertId ||
+            row.attendance_id ||
+            row.attendanceId ||
+            row.payroll_id ||
+            row.payrollId ||
+            row.expense_id ||
+            row.expenseId ||
+            row.task_id ||
+            row.taskId ||
+            row.production_order_id ||
+            row.productionOrderId ||
+            JSON.stringify(row)
+          }
+          searchKey={(row: any) => Object.values(row).join(' ')}
+          searchPlaceholder="Search within generated query records..."
+          isLoading={isLoading}
+        />
+      )}
     </div>
   );
 };

@@ -30,7 +30,7 @@ export interface Invoice {
   dueDate: string;
   status: InvoiceStatus;
   subtotal: number;
-  tax: number; // 18% standard industrial GST
+  tax: number;
   taxRate: number;
   totalAmount: number;
   items: InvoiceItem[];

@@ -1,158 +1,134 @@
 import {
-  initialUsers,
-  initialDepartments,
-  initialEmployees,
-  initialAttendanceDevices,
-  initialAttendanceRecords,
-  initialPayrolls,
-  initialProducts,
-  initialWarehouses,
-  initialShelves,
-  initialInventory,
-  initialSuppliers,
-  initialPurchaseOrders,
-  initialStockTransactions,
-  initialMachines,
-  initialProductionOrders,
-  initialProductionLogs,
-  initialRobots,
-  initialRobotTasks,
-  initialSensors,
-  initialSensorData,
-  initialAlerts,
-  initialCustomers,
-  initialInvoices,
-  initialAccounts,
-  initialJournalEntries,
-  initialExpenses,
+  INITIAL_USERS,
+  INITIAL_DEPARTMENTS,
+  INITIAL_EMPLOYEES,
+  INITIAL_ATTENDANCE_DEVICES,
+  INITIAL_ATTENDANCE,
+  INITIAL_PAYROLL,
+  INITIAL_PRODUCTS,
+  INITIAL_WAREHOUSES,
+  INITIAL_SHELVES,
+  INITIAL_INVENTORY,
+  INITIAL_SUPPLIERS,
+  INITIAL_PURCHASE_ORDERS,
+  INITIAL_STOCK_TRANSACTIONS,
+  INITIAL_MACHINES,
+  INITIAL_PRODUCTION_ORDERS,
+  INITIAL_PRODUCTION_LOGS,
+  INITIAL_ROBOTS,
+  INITIAL_ROBOTS as _R,
+  INITIAL_ROBOT_TASKS,
+  INITIAL_SENSORS,
+  INITIAL_SENSOR_DATA,
+  INITIAL_ALERTS,
+  INITIAL_CUSTOMERS,
+  INITIAL_INVOICES,
+  INITIAL_ACCOUNTS,
+  INITIAL_JOURNAL_ENTRIES,
+  INITIAL_EXPENSES,
 } from './mockData';
 
 class MockStorage {
-  private get<T>(key: string, fallback: T): T {
+  private prefix = 'smart_erp_';
+
+  private getItem<T>(key: string, defaultVal: T): T {
     try {
-      const item = localStorage.getItem(`erp_${key}`);
-      return item ? JSON.parse(item) : fallback;
+      const item = localStorage.getItem(this.prefix + key);
+      return item ? JSON.parse(item) : defaultVal;
     } catch {
-      return fallback;
+      return defaultVal;
     }
   }
 
-  private set<T>(key: string, value: T): void {
+  private setItem<T>(key: string, val: T): void {
     try {
-      localStorage.setItem(`erp_${key}`, JSON.stringify(value));
+      localStorage.setItem(this.prefix + key, JSON.stringify(val));
     } catch (e) {
-      console.error('Storage error:', e);
+      console.error('Mock storage write failed', e);
     }
   }
 
-  // Users
-  getUsers() { return this.get('users', initialUsers); }
-  setUsers(val: typeof initialUsers) { this.set('users', val); }
+  get users() { return this.getItem('users', INITIAL_USERS); }
+  set users(val) { this.setItem('users', val); }
 
-  // Departments
-  getDepartments() { return this.get('departments', initialDepartments); }
-  setDepartments(val: typeof initialDepartments) { this.set('departments', val); }
+  get departments() { return this.getItem('departments', INITIAL_DEPARTMENTS); }
+  set departments(val) { this.setItem('departments', val); }
 
-  // Employees
-  getEmployees() { return this.get('employees', initialEmployees); }
-  setEmployees(val: typeof initialEmployees) { this.set('employees', val); }
+  get employees() { return this.getItem('employees', INITIAL_EMPLOYEES); }
+  set employees(val) { this.setItem('employees', val); }
 
-  // Attendance Devices
-  getAttendanceDevices() { return this.get('attendance_devices', initialAttendanceDevices); }
-  setAttendanceDevices(val: typeof initialAttendanceDevices) { this.set('attendance_devices', val); }
+  get attendanceDevices() { return this.getItem('attendance_devices', INITIAL_ATTENDANCE_DEVICES); }
+  set attendanceDevices(val) { this.setItem('attendance_devices', val); }
 
-  // Attendance Records
-  getAttendanceRecords() { return this.get('attendance_records', initialAttendanceRecords); }
-  setAttendanceRecords(val: typeof initialAttendanceRecords) { this.set('attendance_records', val); }
+  get attendance() { return this.getItem('attendance', INITIAL_ATTENDANCE); }
+  set attendance(val) { this.setItem('attendance', val); }
 
-  // Payrolls
-  getPayrolls() { return this.get('payrolls', initialPayrolls); }
-  setPayrolls(val: typeof initialPayrolls) { this.set('payrolls', val); }
+  get payroll() { return this.getItem('payroll', INITIAL_PAYROLL); }
+  set payroll(val) { this.setItem('payroll', val); }
 
-  // Products
-  getProducts() { return this.get('products', initialProducts); }
-  setProducts(val: typeof initialProducts) { this.set('products', val); }
+  get products() { return this.getItem('products', INITIAL_PRODUCTS); }
+  set products(val) { this.setItem('products', val); }
 
-  // Warehouses
-  getWarehouses() { return this.get('warehouses', initialWarehouses); }
-  setWarehouses(val: typeof initialWarehouses) { this.set('warehouses', val); }
+  get warehouses() { return this.getItem('warehouses', INITIAL_WAREHOUSES); }
+  set warehouses(val) { this.setItem('warehouses', val); }
 
-  // Shelves
-  getShelves() { return this.get('shelves', initialShelves); }
-  setShelves(val: typeof initialShelves) { this.set('shelves', val); }
+  get shelves() { return this.getItem('shelves', INITIAL_SHELVES); }
+  set shelves(val) { this.setItem('shelves', val); }
 
-  // Inventory
-  getInventory() { return this.get('inventory', initialInventory); }
-  setInventory(val: typeof initialInventory) { this.set('inventory', val); }
+  get inventory() { return this.getItem('inventory', INITIAL_INVENTORY); }
+  set inventory(val) { this.setItem('inventory', val); }
 
-  // Suppliers
-  getSuppliers() { return this.get('suppliers', initialSuppliers); }
-  setSuppliers(val: typeof initialSuppliers) { this.set('suppliers', val); }
+  get suppliers() { return this.getItem('suppliers', INITIAL_SUPPLIERS); }
+  set suppliers(val) { this.setItem('suppliers', val); }
 
-  // Purchase Orders
-  getPurchaseOrders() { return this.get('purchase_orders', initialPurchaseOrders); }
-  setPurchaseOrders(val: typeof initialPurchaseOrders) { this.set('purchase_orders', val); }
+  get purchaseOrders() { return this.getItem('purchase_orders', INITIAL_PURCHASE_ORDERS); }
+  set purchaseOrders(val) { this.setItem('purchase_orders', val); }
 
-  // Stock Transactions
-  getStockTransactions() { return this.get('stock_transactions', initialStockTransactions); }
-  setStockTransactions(val: typeof initialStockTransactions) { this.set('stock_transactions', val); }
+  get stockTransactions() { return this.getItem('stock_transactions', INITIAL_STOCK_TRANSACTIONS); }
+  set stockTransactions(val) { this.setItem('stock_transactions', val); }
 
-  // Machines
-  getMachines() { return this.get('machines', initialMachines); }
-  setMachines(val: typeof initialMachines) { this.set('machines', val); }
+  get machines() { return this.getItem('machines', INITIAL_MACHINES); }
+  set machines(val) { this.setItem('machines', val); }
 
-  // Production Orders
-  getProductionOrders() { return this.get('production_orders', initialProductionOrders); }
-  setProductionOrders(val: typeof initialProductionOrders) { this.set('production_orders', val); }
+  get productionOrders() { return this.getItem('production_orders', INITIAL_PRODUCTION_ORDERS); }
+  set productionOrders(val) { this.setItem('production_orders', val); }
 
-  // Production Logs
-  getProductionLogs() { return this.get('production_logs', initialProductionLogs); }
-  setProductionLogs(val: typeof initialProductionLogs) { this.set('production_logs', val); }
+  get productionLogs() { return this.getItem('production_logs', INITIAL_PRODUCTION_LOGS); }
+  set productionLogs(val) { this.setItem('production_logs', val); }
 
-  // Robots
-  getRobots() { return this.get('robots', initialRobots); }
-  setRobots(val: typeof initialRobots) { this.set('robots', val); }
+  get robots() { return this.getItem('robots', INITIAL_ROBOTS); }
+  set robots(val) { this.setItem('robots', val); }
 
-  // Robot Tasks
-  getRobotTasks() { return this.get('robot_tasks', initialRobotTasks); }
-  setRobotTasks(val: typeof initialRobotTasks) { this.set('robot_tasks', val); }
+  get robotTasks() { return this.getItem('robot_tasks', INITIAL_ROBOT_TASKS); }
+  set robotTasks(val) { this.setItem('robot_tasks', val); }
 
-  // Sensors
-  getSensors() { return this.get('sensors', initialSensors); }
-  setSensors(val: typeof initialSensors) { this.set('sensors', val); }
+  get sensors() { return this.getItem('sensors', INITIAL_SENSORS); }
+  set sensors(val) { this.setItem('sensors', val); }
 
-  // Sensor Data
-  getSensorData() { return this.get('sensor_data', initialSensorData); }
-  setSensorData(val: typeof initialSensorData) { this.set('sensor_data', val); }
+  get sensorData() { return this.getItem('sensor_data', INITIAL_SENSOR_DATA); }
+  set sensorData(val) { this.setItem('sensor_data', val); }
 
-  // Alerts
-  getAlerts() { return this.get('alerts', initialAlerts); }
-  setAlerts(val: typeof initialAlerts) { this.set('alerts', val); }
+  get alerts() { return this.getItem('alerts', INITIAL_ALERTS); }
+  set alerts(val) { this.setItem('alerts', val); }
 
-  // Customers
-  getCustomers() { return this.get('customers', initialCustomers); }
-  setCustomers(val: typeof initialCustomers) { this.set('customers', val); }
+  get customers() { return this.getItem('customers', INITIAL_CUSTOMERS); }
+  set customers(val) { this.setItem('customers', val); }
 
-  // Invoices
-  getInvoices() { return this.get('invoices', initialInvoices); }
-  setInvoices(val: typeof initialInvoices) { this.set('invoices', val); }
+  get invoices() { return this.getItem('invoices', INITIAL_INVOICES); }
+  set invoices(val) { this.setItem('invoices', val); }
 
-  // Accounts
-  getAccounts() { return this.get('accounts', initialAccounts); }
-  setAccounts(val: typeof initialAccounts) { this.set('accounts', val); }
+  get accounts() { return this.getItem('accounts', INITIAL_ACCOUNTS); }
+  set accounts(val) { this.setItem('accounts', val); }
 
-  // Journal Entries
-  getJournalEntries() { return this.get('journal_entries', initialJournalEntries); }
-  setJournalEntries(val: typeof initialJournalEntries) { this.set('journal_entries', val); }
+  get journalEntries() { return this.getItem('journal_entries', INITIAL_JOURNAL_ENTRIES); }
+  set journalEntries(val) { this.setItem('journal_entries', val); }
 
-  // Expenses
-  getExpenses() { return this.get('expenses', initialExpenses); }
-  setExpenses(val: typeof initialExpenses) { this.set('expenses', val); }
+  get expenses() { return this.getItem('expenses', INITIAL_EXPENSES); }
+  set expenses(val) { this.setItem('expenses', val); }
 
-  // Reset entire database to initial seeds
-  resetAll() {
+  resetToDefaults() {
     localStorage.clear();
   }
 }
 
-export const mockDb = new MockStorage();
+export const mockStorage = new MockStorage();

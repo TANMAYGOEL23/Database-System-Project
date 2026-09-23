@@ -59,7 +59,7 @@ export interface Payroll {
   employeeId: string;
   employeeName: string;
   departmentName: string;
-  month: string; // e.g. "2026-08"
+  month: string;
   year: number;
   basicSalary: number;
   bonus: number;

@@ -1,45 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { ClipboardList, Plus, Factory, CheckCircle2, AlertTriangle } from 'lucide-react';
-import { DataTable, Column } from '../../components/tables/DataTable';
+import { History, CheckCircle2, AlertTriangle, XCircle, RefreshCw, UserCheck } from 'lucide-react';
+import { DataTable, Column, FilterConfig } from '../../components/tables/DataTable';
 import { Button } from '../../components/ui/Button';
-import { Modal } from '../../components/ui/Modal';
-import { Input } from '../../components/ui/Input';
-import { Select } from '../../components/ui/Select';
-import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useNotification } from '../../context/NotificationContext';
 import { productionService } from '../../services/productionService';
-import { ProductionLog, ProductionOrder } from '../../types/production';
-import { formatDateTime } from '../../utils/formatters';
+import { ProductionLog } from '../../types/production';
+import { formatDate } from '../../utils/formatters';
 
-export const ProductionLogsPage: React.FC = () => {
+export const ProductionLogs: React.FC = () => {
   const [logs, setLogs] = useState<ProductionLog[]>([]);
-  const [orders, setOrders] = useState<ProductionOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
-  // Modal State
-  const [isAddLogOpen, setIsAddLogOpen] = useState(false);
-  const [selectedOrderId, setSelectedOrderId] = useState('');
-  const [quantityProduced, setQuantityProduced] = useState('50');
-  const [status, setStatus] = useState<ProductionLog['status']>('NORMAL');
-  const [remarks, setRemarks] = useState('Shift run certified within tolerance.');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
   const { showToast } = useNotification();
 
   const loadData = async () => {
     try {
       setIsLoading(true);
-      const [l, o] = await Promise.all([
-        productionService.getLogs(),
-        productionService.getOrders(),
-      ]);
-      setLogs(l);
-      setOrders(o);
-      if (o.length > 0 && !selectedOrderId) {
-        setSelectedOrderId(o[0].productionOrderId);
-      }
+      const data = await productionService.getLogs();
+      setLogs(data);
     } catch (e: any) {
-      showToast('error', 'Error Loading Logs', e.message);
+      showToast('error', 'Error Loading Production Logs', e.message);
     } finally {
       setIsLoading(false);
     }
@@ -49,28 +28,29 @@ export const ProductionLogsPage: React.FC = () => {
     loadData();
   }, []);
 
-  const handleAddLogSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const qty = parseInt(quantityProduced, 10);
-    if (isNaN(qty) || qty <= 0) return;
-
-    try {
-      setIsSubmitting(true);
-      await productionService.addLog({
-        productionOrderId: selectedOrderId,
-        quantityProduced: qty,
-        status,
-        remarks,
-        operatorName: 'Floor Supervisor Desk',
-      });
-
-      showToast('success', 'Production Log Added', `Recorded ${qty} units for order ${selectedOrderId}.`);
-      setIsAddLogOpen(false);
-      loadData();
-    } catch (err: any) {
-      showToast('error', 'Failed to Add Log', err.message);
-    } finally {
-      setIsSubmitting(false);
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'NORMAL':
+        return (
+          <span className="px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-emerald-950 text-emerald-300 border border-emerald-800/60 flex items-center gap-1 w-fit">
+            <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+            PASSED QA
+          </span>
+        );
+      case 'DEFECTIVE':
+        return (
+          <span className="px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-amber-950 text-amber-300 border border-amber-800/60 flex items-center gap-1 w-fit">
+            <AlertTriangle className="w-3 h-3 text-amber-400" />
+            DEFECTIVE
+          </span>
+        );
+      default:
+        return (
+          <span className="px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-rose-950 text-rose-300 border border-rose-800/60 flex items-center gap-1 w-fit">
+            <XCircle className="w-3 h-3 text-rose-400" />
+            MAINTENANCE STOP
+          </span>
+        );
     }
   };
 
@@ -79,50 +59,63 @@ export const ProductionLogsPage: React.FC = () => {
       key: 'logId',
       header: 'Log ID',
       sortable: true,
-      render: (l) => <span className="font-mono font-semibold text-blue-400">{l.logId}</span>,
+      render: (l) => <span className="font-mono text-xs font-semibold text-blue-400">{l.logId}</span>,
     },
     {
       key: 'productionOrderId',
-      header: 'Production Work Order',
+      header: 'Work Order Ref',
       sortable: true,
-      render: (l) => (
-        <div>
-          <span className="font-mono font-semibold text-slate-100">{l.productionOrderId}</span>
-        </div>
-      ),
+      render: (l) => <span className="font-mono text-xs text-slate-200">{l.productionOrderId}</span>,
     },
     {
       key: 'quantityProduced',
-      header: 'Produced Output',
+      header: 'Yield Output',
       sortable: true,
       align: 'right',
       render: (l) => (
-        <span className="font-mono font-bold text-cyan-400 text-sm">
+        <span className="font-mono font-bold text-xs text-emerald-400">
           +{l.quantityProduced} Units
         </span>
       ),
     },
     {
-      key: 'remarks',
-      header: 'Operator Notes & Remarks',
-      render: (l) => <span className="text-xs text-slate-300">{l.remarks}</span>,
+      key: 'status',
+      header: 'QA Inspection',
+      sortable: true,
+      render: (l) => getStatusBadge(l.status),
     },
     {
       key: 'operatorName',
-      header: 'Recorded By',
-      render: (l) => <span className="text-xs text-slate-400">{l.operatorName || 'Shift Operator'}</span>,
+      header: 'Floor Operator',
+      render: (l) => (
+        <span className="text-xs text-slate-300 flex items-center gap-1.5">
+          <UserCheck className="w-3.5 h-3.5 text-slate-400" />
+          {l.operatorName || 'Supervisor'}
+        </span>
+      ),
+    },
+    {
+      key: 'remarks',
+      header: 'Batch Remarks',
+      render: (l) => <span className="text-xs text-slate-400">{l.remarks}</span>,
     },
     {
       key: 'timestamp',
-      header: 'Timestamp',
+      header: 'Logged At',
       sortable: true,
-      render: (l) => <span className="font-mono text-xs text-slate-400">{formatDateTime(l.timestamp)}</span>,
+      render: (l) => <span className="font-mono text-xs text-slate-400">{formatDate(l.timestamp)}</span>,
     },
+  ];
+
+  const filters: FilterConfig[] = [
     {
       key: 'status',
-      header: 'Quality Status',
-      sortable: true,
-      render: (l) => <StatusBadge status={l.status} />,
+      label: 'Batch Status',
+      options: [
+        { label: 'Passed QA', value: 'NORMAL' },
+        { label: 'Defects Logged', value: 'DEFECTIVE' },
+        { label: 'Maintenance Stop', value: 'MAINTENANCE_STOP' },
+      ],
     },
   ];
 
@@ -130,18 +123,18 @@ export const ProductionLogsPage: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-white tracking-tight">Plant Production Audit Logs</h2>
+          <h2 className="text-2xl font-bold text-white tracking-tight">Machine Output Logs & Quality Records</h2>
           <p className="text-xs text-slate-400 mt-1">
-            Real-time shift output recordings, defect quarantine logs, and automated work-order completion updates.
+            Historical ledger of manufacturing shifts, batch inspection yields, and line stoppage reports.
           </p>
         </div>
 
         <Button
-          variant="primary"
-          onClick={() => setIsAddLogOpen(true)}
-          leftIcon={<Plus className="w-4 h-4" />}
+          variant="secondary"
+          onClick={loadData}
+          leftIcon={<RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />}
         >
-          Add Production Log
+          Refresh Logs
         </Button>
       </div>
 
@@ -149,71 +142,11 @@ export const ProductionLogsPage: React.FC = () => {
         data={logs}
         columns={columns}
         rowKey={(l) => l.logId}
-        searchKey={(l) => `${l.logId} ${l.productionOrderId} ${l.remarks} ${l.operatorName || ''}`}
-        searchPlaceholder="Search logs by order ID, remarks..."
+        searchKey={(l) => `${l.logId} ${l.productionOrderId} ${l.operatorName} ${l.remarks}`}
+        searchPlaceholder="Search logs by order reference, operator, or notes..."
+        filters={filters}
         isLoading={isLoading}
       />
-
-      {/* Add Log Modal */}
-      <Modal
-        isOpen={isAddLogOpen}
-        onClose={() => setIsAddLogOpen(false)}
-        title="Record New Production Batch Log"
-        subtitle="PostgreSQL PRODUCTION_LOG entity"
-        maxWidth="md"
-        icon={<ClipboardList className="w-5 h-5 text-blue-400" />}
-      >
-        <form onSubmit={handleAddLogSubmit} className="space-y-4">
-          <Select
-            label="Target Work Order"
-            value={selectedOrderId}
-            onChange={(e) => setSelectedOrderId(e.target.value)}
-            options={orders.map((o) => ({
-              label: `${o.productionOrderId} - ${o.productName} (${o.producedQuantity}/${o.quantity} units)`,
-              value: o.productionOrderId,
-            }))}
-            required
-          />
-
-          <Input
-            label="Batch Quantity Produced"
-            type="number"
-            min="1"
-            value={quantityProduced}
-            onChange={(e) => setQuantityProduced(e.target.value)}
-            required
-          />
-
-          <Select
-            label="Quality & Inspection Status"
-            value={status}
-            onChange={(e) => setStatus(e.target.value as any)}
-            options={[
-              { label: 'NORMAL (Passed Tolerance Inspection)', value: 'NORMAL' },
-              { label: 'DEFECTIVE (Quarantined)', value: 'DEFECTIVE' },
-              { label: 'MAINTENANCE_STOP (Halted for Tooling)', value: 'MAINTENANCE_STOP' },
-            ]}
-            required
-          />
-
-          <Input
-            label="Operator Remarks / Calibration Details"
-            value={remarks}
-            onChange={(e) => setRemarks(e.target.value)}
-            placeholder="e.g. Afternoon shift run; tolerance testing within 0.002mm"
-            required
-          />
-
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
-            <Button variant="secondary" onClick={() => setIsAddLogOpen(false)} type="button">
-              Cancel
-            </Button>
-            <Button variant="primary" type="submit" isLoading={isSubmitting}>
-              Submit Production Log
-            </Button>
-          </div>
-        </form>
-      </Modal>
     </div>
   );
 };

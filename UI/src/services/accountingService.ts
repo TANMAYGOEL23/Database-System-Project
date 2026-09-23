@@ -1,104 +1,194 @@
-import { apiClient, simulateLatency } from './api';
+import { delay } from './api';
+import { supabase, isSupabaseConfigured } from './supabase';
+import { mockStorage } from './mockStorage';
 import { Account, JournalEntry, Expense } from '../types/accounting';
-import { mockDb } from './mockStorage';
+
+function mapAccountFromDb(row: any): Account {
+  return {
+    accountId: row.account_id || row.accountId,
+    accountNumber: row.account_number || row.accountNumber,
+    accountName: row.account_name || row.accountName,
+    accountType: row.account_type || row.accountType,
+    balance: parseFloat(row.balance || 0),
+    description: row.description,
+    status: row.status,
+  };
+}
+
+function mapJEFromDb(row: any, lines: any[] = []): JournalEntry {
+  return {
+    entryId: row.entry_id || row.entryId,
+    date: row.date,
+    description: row.description,
+    reference: row.reference,
+    totalDebit: parseFloat(row.total_debit || row.totalDebit || 0),
+    totalCredit: parseFloat(row.total_credit || row.totalCredit || 0),
+    status: row.status,
+    lines: lines.map((l) => ({
+      lineId: l.line_id || l.lineId,
+      accountId: l.account_id || l.accountId,
+      accountName: l.account_name || l.accountName,
+      debit: parseFloat(l.debit || 0),
+      credit: parseFloat(l.credit || 0),
+      memo: l.memo,
+    })),
+  };
+}
+
+function mapExpenseFromDb(row: any): Expense {
+  return {
+    expenseId: row.expense_id || row.expenseId,
+    accountId: row.account_id || row.accountId,
+    accountName: row.account_name || row.accountName,
+    category: row.category,
+    date: row.date,
+    amount: parseFloat(row.amount || 0),
+    description: row.description,
+    paymentMethod: row.payment_method || row.paymentMethod,
+    status: row.status,
+    receiptRef: row.receipt_ref || row.receiptRef,
+  };
+}
 
 export const accountingService = {
   async getAccounts(): Promise<Account[]> {
-    try {
-      const response = await apiClient.get<Account[]>('/accounting/accounts');
-      return response.data;
-    } catch {
-      await simulateLatency(150);
-      return mockDb.getAccounts();
+    if (isSupabaseConfigured()) {
+      const { data, error } = await supabase.from('accounts').select('*').order('account_number');
+      if (error) throw new Error(error.message);
+      return (data || []).map(mapAccountFromDb);
     }
+
+    await delay(200);
+    return mockStorage.accounts;
   },
 
-  async createAccount(acc: Omit<Account, 'accountId'>): Promise<Account> {
-    try {
-      const response = await apiClient.post<Account>('/accounting/accounts', acc);
-      return response.data;
-    } catch {
-      await simulateLatency(200);
-      const accounts = mockDb.getAccounts();
-      const newId = `ACC${String(accounts.length + 101)}`;
-      const newAcc: Account = {
-        ...acc,
-        accountId: newId,
-        balance: acc.balance || 0,
+  async createAccount(account: Omit<Account, 'accountId'>): Promise<Account> {
+    if (isSupabaseConfigured()) {
+      const payload = {
+        account_id: `ACC-${account.accountNumber}`,
+        account_number: account.accountNumber,
+        account_name: account.accountName,
+        account_type: account.accountType,
+        balance: account.balance || 0,
+        description: account.description,
         status: 'ACTIVE',
       };
-      mockDb.setAccounts([...accounts, newAcc]);
-      return newAcc;
+      const { data, error } = await supabase.from('accounts').insert([payload]).select().single();
+      if (error) throw new Error(error.message);
+      return mapAccountFromDb(data);
     }
+
+    await delay(250);
+    const newAcc: Account = {
+      ...account,
+      accountId: `ACC-${account.accountNumber}`,
+      status: 'ACTIVE',
+    };
+    mockStorage.accounts = [...mockStorage.accounts, newAcc];
+    return newAcc;
   },
 
   async getJournalEntries(): Promise<JournalEntry[]> {
-    try {
-      const response = await apiClient.get<JournalEntry[]>('/accounting/journal-entries');
-      return response.data;
-    } catch {
-      await simulateLatency(200);
-      return mockDb.getJournalEntries();
+    if (isSupabaseConfigured()) {
+      const { data: entries, error } = await supabase.from('journal_entries').select('*').order('created_at', { ascending: false });
+      if (error) throw new Error(error.message);
+
+      const { data: allLines } = await supabase.from('journal_entry_lines').select('*');
+
+      return (entries || []).map((e) => {
+        const matching = (allLines || []).filter((l) => l.entry_id === e.entry_id);
+        return mapJEFromDb(e, matching);
+      });
     }
+
+    await delay(200);
+    return mockStorage.journalEntries;
   },
 
   async createJournalEntry(entry: Omit<JournalEntry, 'entryId' | 'totalDebit' | 'totalCredit'>): Promise<JournalEntry> {
-    try {
-      const response = await apiClient.post<JournalEntry>('/accounting/journal-entries', entry);
-      return response.data;
-    } catch {
-      await simulateLatency(300);
-      const entries = mockDb.getJournalEntries();
-      const totalDebit = entry.lines.reduce((s, l) => s + (Number(l.debit) || 0), 0);
-      const totalCredit = entry.lines.reduce((s, l) => s + (Number(l.credit) || 0), 0);
+    const totalDebit = entry.lines.reduce((s, l) => s + (Number(l.debit) || 0), 0);
+    const totalCredit = entry.lines.reduce((s, l) => s + (Number(l.credit) || 0), 0);
 
-      if (Math.abs(totalDebit - totalCredit) > 0.01) {
-        throw new Error(`Double-entry unbalanced: Debits ($${totalDebit.toFixed(2)}) must equal Credits ($${totalCredit.toFixed(2)})`);
-      }
+    if (Math.abs(totalDebit - totalCredit) > 0.01) {
+      throw new Error('Double-Entry balance error: Total Debits must equal Total Credits');
+    }
 
-      const newId = `JE-2026-${String(entries.length + 4).padStart(3, '0')}`;
-      const newEntry: JournalEntry = {
-        ...entry,
-        entryId: newId,
-        totalDebit,
-        totalCredit,
+    if (isSupabaseConfigured()) {
+      const jePayload = {
+        date: entry.date,
+        description: entry.description,
+        reference: entry.reference,
+        total_debit: totalDebit,
+        total_credit: totalCredit,
         status: 'POSTED',
-        lines: entry.lines.map((l, idx) => ({
-          ...l,
-          lineId: `JEL-${newId}-${idx + 1}`,
-        })),
       };
 
-      mockDb.setJournalEntries([newEntry, ...entries]);
-      return newEntry;
+      const { data: createdJE, error: jeErr } = await supabase.from('journal_entries').insert([jePayload]).select().single();
+      if (jeErr) throw new Error(jeErr.message);
+
+      const linesPayload = entry.lines.map((l) => ({
+        entry_id: createdJE.entry_id,
+        account_id: l.accountId,
+        account_name: l.accountName,
+        debit: l.debit,
+        credit: l.credit,
+        memo: l.memo,
+      }));
+
+      const { data: createdLines, error: lErr } = await supabase.from('journal_entry_lines').insert(linesPayload).select();
+      if (lErr) throw new Error(lErr.message);
+
+      return mapJEFromDb(createdJE, createdLines || []);
     }
+
+    await delay(350);
+    const newJE: JournalEntry = {
+      ...entry,
+      entryId: `JE-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+      totalDebit,
+      totalCredit,
+      status: 'POSTED',
+    };
+    mockStorage.journalEntries = [newJE, ...mockStorage.journalEntries];
+    return newJE;
   },
 
   async getExpenses(): Promise<Expense[]> {
-    try {
-      const response = await apiClient.get<Expense[]>('/accounting/expenses');
-      return response.data;
-    } catch {
-      await simulateLatency(150);
-      return mockDb.getExpenses();
+    if (isSupabaseConfigured()) {
+      const { data, error } = await supabase.from('expenses').select('*').order('created_at', { ascending: false });
+      if (error) throw new Error(error.message);
+      return (data || []).map(mapExpenseFromDb);
     }
+
+    await delay(200);
+    return mockStorage.expenses;
   },
 
   async createExpense(expense: Omit<Expense, 'expenseId'>): Promise<Expense> {
-    try {
-      const response = await apiClient.post<Expense>('/accounting/expenses', expense);
-      return response.data;
-    } catch {
-      await simulateLatency(250);
-      const expenses = mockDb.getExpenses();
-      const newId = `EXP-${String(expenses.length + 104)}`;
-      const newExp: Expense = {
-        ...expense,
-        expenseId: newId,
+    if (isSupabaseConfigured()) {
+      const payload = {
+        account_id: expense.accountId,
+        account_name: expense.accountName,
+        category: expense.category,
+        date: expense.date,
+        amount: expense.amount,
+        description: expense.description,
+        payment_method: expense.paymentMethod,
         status: expense.status || 'APPROVED',
+        receipt_ref: expense.receiptRef,
       };
-      mockDb.setExpenses([newExp, ...expenses]);
-      return newExp;
+
+      const { data, error } = await supabase.from('expenses').insert([payload]).select().single();
+      if (error) throw new Error(error.message);
+      return mapExpenseFromDb(data);
     }
+
+    await delay(300);
+    const newExp: Expense = {
+      ...expense,
+      expenseId: `EXP-${Math.floor(100 + Math.random() * 900)}`,
+    };
+    mockStorage.expenses = [newExp, ...mockStorage.expenses];
+    return newExp;
   },
 };

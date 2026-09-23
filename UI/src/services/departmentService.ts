@@ -1,58 +1,85 @@
-import { apiClient, simulateLatency } from './api';
+import { delay } from './api';
+import { supabase, isSupabaseConfigured } from './supabase';
+import { mockStorage } from './mockStorage';
 import { Department } from '../types/hr';
-import { mockDb } from './mockStorage';
+
+function mapDeptFromDb(row: any): Department {
+  return {
+    departmentId: row.department_id || row.departmentId,
+    departmentName: row.department_name || row.departmentName,
+    managerId: row.manager_id || row.managerId,
+    managerName: row.manager_name || row.managerName,
+    employeeCount: row.employee_count || row.employeeCount || 0,
+    location: row.location,
+  };
+}
 
 export const departmentService = {
   async getAll(): Promise<Department[]> {
-    try {
-      const response = await apiClient.get<Department[]>('/departments');
-      return response.data;
-    } catch {
-      await simulateLatency(200);
-      return mockDb.getDepartments();
+    if (isSupabaseConfigured()) {
+      const { data, error } = await supabase.from('departments').select('*').order('department_name');
+      if (error) throw new Error(error.message);
+      return (data || []).map(mapDeptFromDb);
     }
+
+    await delay(200);
+    return mockStorage.departments;
   },
 
   async create(dept: Omit<Department, 'departmentId' | 'employeeCount'>): Promise<Department> {
-    try {
-      const response = await apiClient.post<Department>('/departments', dept);
-      return response.data;
-    } catch {
-      await simulateLatency(250);
-      const depts = mockDb.getDepartments();
-      const newId = `DEP${String(depts.length + 1).padStart(3, '0')}`;
-      const newDept: Department = {
-        ...dept,
-        departmentId: newId,
-        employeeCount: 0,
+    if (isSupabaseConfigured()) {
+      const payload = {
+        department_name: dept.departmentName,
+        manager_id: dept.managerId,
+        manager_name: dept.managerName,
+        location: dept.location,
       };
-      mockDb.setDepartments([...depts, newDept]);
-      return newDept;
+      const { data, error } = await supabase.from('departments').insert([payload]).select().single();
+      if (error) throw new Error(error.message);
+      return mapDeptFromDb(data);
     }
+
+    await delay(300);
+    const list = mockStorage.departments;
+    const newDept: Department = {
+      ...dept,
+      departmentId: `DEP${String(list.length + 1).padStart(3, '0')}`,
+      employeeCount: 0,
+    };
+    mockStorage.departments = [...list, newDept];
+    return newDept;
   },
 
-  async update(id: string, updates: Partial<Department>): Promise<Department> {
-    try {
-      const response = await apiClient.put<Department>(`/departments/${id}`, updates);
-      return response.data;
-    } catch {
-      await simulateLatency(200);
-      const depts = mockDb.getDepartments();
-      const index = depts.findIndex((d) => d.departmentId === id);
-      if (index === -1) throw new Error(`Department ${id} not found`);
-      depts[index] = { ...depts[index], ...updates };
-      mockDb.setDepartments(depts);
-      return depts[index];
+  async update(id: string, dept: Partial<Department>): Promise<Department> {
+    if (isSupabaseConfigured()) {
+      const payload: any = {};
+      if (dept.departmentName) payload.department_name = dept.departmentName;
+      if (dept.managerId) payload.manager_id = dept.managerId;
+      if (dept.managerName) payload.manager_name = dept.managerName;
+      if (dept.location) payload.location = dept.location;
+
+      const { data, error } = await supabase.from('departments').update(payload).eq('department_id', id).select().single();
+      if (error) throw new Error(error.message);
+      return mapDeptFromDb(data);
     }
+
+    await delay(250);
+    const list = mockStorage.departments;
+    const idx = list.findIndex((d) => d.departmentId === id);
+    if (idx === -1) throw new Error(`Department ${id} not found`);
+    list[idx] = { ...list[idx], ...dept };
+    mockStorage.departments = list;
+    return list[idx];
   },
 
   async delete(id: string): Promise<void> {
-    try {
-      await apiClient.delete(`/departments/${id}`);
-    } catch {
-      await simulateLatency(200);
-      const depts = mockDb.getDepartments();
-      mockDb.setDepartments(depts.filter((d) => d.departmentId !== id));
+    if (isSupabaseConfigured()) {
+      const { error } = await supabase.from('departments').delete().eq('department_id', id);
+      if (error) throw new Error(error.message);
+      return;
     }
+
+    await delay(250);
+    mockStorage.departments = mockStorage.departments.filter((d) => d.departmentId !== id);
   },
 };

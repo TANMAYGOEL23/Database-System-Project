@@ -1,141 +1,209 @@
-import { apiClient, simulateLatency } from './api';
-import { Robot, RobotTask, RobotTaskStatus } from '../types/warehouse';
-import { StockTransaction } from '../types/inventory';
-import { mockDb } from './mockStorage';
+import { delay } from './api';
+import { supabase, isSupabaseConfigured } from './supabase';
+import { mockStorage } from './mockStorage';
+import { Robot, RobotTask, RobotStatus, RobotTaskStatus } from '../types/warehouse';
 
-const LIFECYCLE_STEPS: RobotTaskStatus[] = [
-  'CREATED',
-  'ASSIGNED',
-  'IN_PROGRESS',
-  'PICKED',
-  'DELIVERED',
-  'COMPLETED',
-];
+function mapRobotFromDb(row: any): Robot {
+  return {
+    robotId: row.robot_id || row.robotId,
+    robotName: row.robot_name || row.robotName,
+    model: row.model,
+    battery: parseInt(row.battery || 100, 10),
+    status: row.status,
+    currentLocation: row.current_location || row.currentLocation,
+    payloadCapacityKg: parseInt(row.payload_capacity_kg || row.payloadCapacityKg || 1000, 10),
+    totalTasksCompleted: parseInt(row.total_tasks_completed || row.totalTasksCompleted || 0, 10),
+  };
+}
+
+function mapTaskFromDb(row: any): RobotTask {
+  return {
+    taskId: row.task_id || row.taskId,
+    robotId: row.robot_id || row.robotId,
+    robotName: row.robot_name || row.robotName,
+    shelfId: row.shelf_id || row.shelfId,
+    shelfLocation: row.shelf_location || row.shelfLocation,
+    productId: row.product_id || row.productId,
+    productName: row.product_name || row.productName,
+    quantity: parseInt(row.quantity || 1, 10),
+    targetLocation: row.target_location || row.targetLocation,
+    startTime: row.start_time || row.startTime,
+    endTime: row.end_time || row.endTime,
+    status: row.status,
+    priority: row.priority,
+  };
+}
 
 export const robotService = {
   async getRobots(): Promise<Robot[]> {
-    try {
-      const response = await apiClient.get<Robot[]>('/robots');
-      return response.data;
-    } catch {
-      await simulateLatency(150);
-      return mockDb.getRobots();
+    if (isSupabaseConfigured()) {
+      const { data, error } = await supabase.from('robots').select('*').order('robot_id');
+      if (error) throw new Error(error.message);
+      return (data || []).map(mapRobotFromDb);
     }
+
+    await delay(200);
+    return mockStorage.robots;
   },
 
-  async updateRobotStatus(id: string, status: Robot['status'], battery?: number): Promise<Robot> {
-    try {
-      const response = await apiClient.patch<Robot>(`/robots/${id}/status`, { status, battery });
-      return response.data;
-    } catch {
-      await simulateLatency(150);
-      const robots = mockDb.getRobots();
-      const idx = robots.findIndex((r) => r.robotId === id);
-      if (idx === -1) throw new Error(`Robot ${id} not found`);
-      robots[idx].status = status;
-      if (battery !== undefined) robots[idx].battery = battery;
-      robots[idx].lastActive = new Date().toISOString().replace('T', ' ').substring(0, 19);
-      mockDb.setRobots(robots);
-      return robots[idx];
+  async updateRobotStatus(robotId: string, status: RobotStatus, battery?: number): Promise<Robot> {
+    if (isSupabaseConfigured()) {
+      const payload: any = { status };
+      if (battery !== undefined) payload.battery = battery;
+      const { data, error } = await supabase.from('robots').update(payload).eq('robot_id', robotId).select().single();
+      if (error) throw new Error(error.message);
+      return mapRobotFromDb(data);
     }
+
+    await delay(250);
+    const robots = mockStorage.robots;
+    const idx = robots.findIndex((r) => r.robotId === robotId);
+    if (idx === -1) throw new Error(`Robot ${robotId} not found`);
+
+    robots[idx].status = status;
+    if (battery !== undefined) robots[idx].battery = battery;
+    mockStorage.robots = robots;
+    return robots[idx];
   },
 
   async getTasks(): Promise<RobotTask[]> {
-    try {
-      const response = await apiClient.get<RobotTask[]>('/robots/tasks');
-      return response.data;
-    } catch {
-      await simulateLatency(150);
-      return mockDb.getRobotTasks();
+    if (isSupabaseConfigured()) {
+      const { data, error } = await supabase.from('robot_tasks').select('*').order('start_time', { ascending: false });
+      if (error) throw new Error(error.message);
+      return (data || []).map(mapTaskFromDb);
     }
+
+    await delay(200);
+    return mockStorage.robotTasks;
   },
 
-  async createTask(task: Omit<RobotTask, 'taskId' | 'status' | 'startTime'>): Promise<RobotTask> {
-    try {
-      const response = await apiClient.post<RobotTask>('/robots/tasks', task);
-      return response.data;
-    } catch {
-      await simulateLatency(250);
-      const tasks = mockDb.getRobotTasks();
-      const robots = mockDb.getRobots();
-      const newId = `TSK-ROB-${String(tasks.length + 101)}`;
-      const nowStr = new Date().toISOString().replace('T', ' ').substring(0, 19);
+  async createTask(task: Omit<RobotTask, 'taskId' | 'startTime' | 'status'>): Promise<RobotTask> {
+    const nowStr = new Date().toISOString().replace('T', ' ').substring(0, 16);
 
-      const rob = robots.find((r) => r.robotId === task.robotId);
-
-      const newTask: RobotTask = {
-        ...task,
-        taskId: newId,
-        robotName: rob ? rob.robotName : task.robotId,
+    if (isSupabaseConfigured()) {
+      const payload = {
+        robot_id: task.robotId,
+        robot_name: task.robotName,
+        shelf_id: task.shelfId,
+        shelf_location: task.shelfLocation,
+        product_id: task.productId,
+        product_name: task.productName,
+        quantity: task.quantity,
+        target_location: task.targetLocation,
+        start_time: nowStr,
         status: 'ASSIGNED',
-        startTime: nowStr,
+        priority: task.priority || 'HIGH',
       };
 
-      if (rob) {
-        rob.status = 'BUSY';
-        mockDb.setRobots(robots);
-      }
+      const { data, error } = await supabase.from('robot_tasks').insert([payload]).select().single();
+      if (error) throw new Error(error.message);
 
-      mockDb.setRobotTasks([newTask, ...tasks]);
-      return newTask;
+      await supabase.from('robots').update({ status: 'BUSY' }).eq('robot_id', task.robotId);
+      return mapTaskFromDb(data);
     }
+
+    await delay(300);
+    const newTask: RobotTask = {
+      ...task,
+      taskId: `TSK-ROBOT-${Math.floor(100 + Math.random() * 900)}`,
+      startTime: nowStr,
+      status: 'ASSIGNED',
+    };
+    mockStorage.robotTasks = [newTask, ...mockStorage.robotTasks];
+
+    const robots = mockStorage.robots;
+    const rIdx = robots.findIndex((r) => r.robotId === task.robotId);
+    if (rIdx !== -1) {
+      robots[rIdx].status = 'BUSY';
+      mockStorage.robots = robots;
+    }
+
+    return newTask;
   },
 
   async advanceTaskStatus(taskId: string): Promise<RobotTask> {
-    try {
-      const response = await apiClient.post<RobotTask>(`/robots/tasks/${taskId}/advance`);
-      return response.data;
-    } catch {
-      await simulateLatency(200);
-      const tasks = mockDb.getRobotTasks();
-      const robots = mockDb.getRobots();
-      const idx = tasks.findIndex((t) => t.taskId === taskId);
-      if (idx === -1) throw new Error(`Task ${taskId} not found`);
+    const statusOrder: RobotTaskStatus[] = ['CREATED', 'ASSIGNED', 'IN_PROGRESS', 'PICKED', 'DELIVERED', 'COMPLETED'];
 
-      const current = tasks[idx];
-      const stepIdx = LIFECYCLE_STEPS.indexOf(current.status);
-      if (stepIdx === -1 || stepIdx >= LIFECYCLE_STEPS.length - 1) {
-        return current;
-      }
+    if (isSupabaseConfigured()) {
+      const { data: t } = await supabase.from('robot_tasks').select('*').eq('task_id', taskId).single();
+      if (!t) throw new Error(`Task ${taskId} not found`);
 
-      const nextStatus = LIFECYCLE_STEPS[stepIdx + 1];
-      const nowStr = new Date().toISOString().replace('T', ' ').substring(0, 19);
+      const currentIdx = statusOrder.indexOf(t.status as RobotTaskStatus);
+      const nextStatus = currentIdx < statusOrder.length - 1 ? statusOrder[currentIdx + 1] : 'COMPLETED';
+      const nowStr = new Date().toISOString().replace('T', ' ').substring(0, 16);
 
-      tasks[idx] = {
-        ...current,
-        status: nextStatus,
-        endTime: nextStatus === 'COMPLETED' ? nowStr : current.endTime,
-      };
+      const updatePayload: any = { status: nextStatus };
+      if (nextStatus === 'COMPLETED') updatePayload.end_time = nowStr;
 
-      if (nextStatus === 'COMPLETED') {
-        const rob = robots.find((r) => r.robotId === current.robotId);
+      const { data: updated, error } = await supabase.from('robot_tasks').update(updatePayload).eq('task_id', taskId).select().single();
+      if (error) throw new Error(error.message);
+
+      if (nextStatus === 'COMPLETED' && t.robot_id) {
+        const { data: rob } = await supabase.from('robots').select('*').eq('robot_id', t.robot_id).single();
         if (rob) {
-          rob.status = 'IDLE';
-          rob.totalTasksCompleted += 1;
-          rob.currentLocation = current.targetLocation;
-          mockDb.setRobots(robots);
+          await supabase.from('robots').update({
+            status: 'IDLE',
+            total_tasks_completed: (rob.total_tasks_completed || 0) + 1,
+            current_location: t.target_location,
+          }).eq('robot_id', t.robot_id);
         }
 
-        // Add a stock movement transaction
-        const txns = mockDb.getStockTransactions();
-        const newTxn: StockTransaction = {
-          transactionId: `TXN-${Date.now().toString().slice(-4)}`,
-          productId: current.productId,
-          productName: current.productName || 'Moved Item',
-          warehouseId: 'WAR001',
-          warehouseName: 'Main Plant Facility',
-          transactionType: 'ROBOT_MOVEMENT',
-          quantity: current.quantity,
-          date: nowStr,
-          reference: current.taskId,
-          notes: `Delivered by ${current.robotName || current.robotId} to ${current.targetLocation}`,
-        };
-        txns.unshift(newTxn);
-        mockDb.setStockTransactions(txns);
+        await supabase.from('stock_transactions').insert([
+          {
+            product_id: t.product_id,
+            product_name: t.product_name,
+            warehouse_id: 'WH01',
+            warehouse_name: 'Central Raw Materials Hub',
+            transaction_type: 'ROBOT_MOVEMENT',
+            quantity: t.quantity,
+            date: nowStr,
+            reference: t.task_id,
+            notes: `AMR transfer to ${t.target_location}`,
+          },
+        ]);
       }
 
-      mockDb.setRobotTasks(tasks);
-      return tasks[idx];
+      return mapTaskFromDb(updated);
     }
+
+    await delay(300);
+    const tasks = mockStorage.robotTasks;
+    const idx = tasks.findIndex((t) => t.taskId === taskId);
+    if (idx === -1) throw new Error(`Task ${taskId} not found`);
+
+    const currentIdx = statusOrder.indexOf(tasks[idx].status);
+    const nextStatus = currentIdx < statusOrder.length - 1 ? statusOrder[currentIdx + 1] : 'COMPLETED';
+    tasks[idx].status = nextStatus;
+
+    if (nextStatus === 'COMPLETED') {
+      const nowStr = new Date().toISOString().replace('T', ' ').substring(0, 16);
+      tasks[idx].endTime = nowStr;
+
+      const robots = mockStorage.robots;
+      const rIdx = robots.findIndex((r) => r.robotId === tasks[idx].robotId);
+      if (rIdx !== -1) {
+        robots[rIdx].status = 'IDLE';
+        robots[rIdx].totalTasksCompleted += 1;
+        robots[rIdx].currentLocation = tasks[idx].targetLocation;
+        mockStorage.robots = robots;
+      }
+
+      const newTxn = {
+        transactionId: `TXN-${Math.floor(1000 + Math.random() * 9000)}`,
+        productId: tasks[idx].productId,
+        productName: tasks[idx].productName || tasks[idx].productId,
+        warehouseId: 'WH01',
+        warehouseName: 'Central Raw Materials Hub',
+        transactionType: 'ROBOT_MOVEMENT' as const,
+        quantity: tasks[idx].quantity,
+        date: nowStr,
+        reference: tasks[idx].taskId,
+        notes: `AMR transfer to ${tasks[idx].targetLocation}`,
+      };
+      mockStorage.stockTransactions = [newTxn, ...mockStorage.stockTransactions];
+    }
+
+    mockStorage.robotTasks = tasks;
+    return tasks[idx];
   },
 };

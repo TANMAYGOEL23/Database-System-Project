@@ -21,14 +21,6 @@ export default {
           900: '#1e2634',
           950: '#131822',
         },
-        factory: {
-          blue: '#1d4ed8',
-          amber: '#d97706',
-          emerald: '#059669',
-          rose: '#e11d48',
-          cyan: '#0891b2',
-          slate: '#0f172a',
-        }
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],

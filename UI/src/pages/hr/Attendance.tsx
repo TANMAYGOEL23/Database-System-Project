@@ -1,39 +1,34 @@
 import React, { useState, useEffect } from 'react';
-import { Radio, CalendarCheck2, Clock, UserCheck, Filter, Download, User } from 'lucide-react';
+import { Fingerprint, Clock, Calendar, CheckCircle2, User, RefreshCw } from 'lucide-react';
 import { DataTable, Column, FilterConfig } from '../../components/tables/DataTable';
 import { Button } from '../../components/ui/Button';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { SimulateAttendanceModal } from '../../components/simulation/SimulateAttendanceModal';
+import { useNotification } from '../../context/NotificationContext';
 import { attendanceService } from '../../services/attendanceService';
-import { employeeService } from '../../services/employeeService';
 import { departmentService } from '../../services/departmentService';
-import { useAuth } from '../../context/AuthContext';
-import { AttendanceRecord, Department, Employee } from '../../types/hr';
+import { AttendanceRecord, Department } from '../../types/hr';
 import { formatDate } from '../../utils/formatters';
 
 export const Attendance: React.FC = () => {
-  const { user, isAdmin } = useAuth();
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
-  const [employees, setEmployees] = useState<Employee[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSimulateOpen, setIsSimulateOpen] = useState(false);
 
+  const { showToast } = useNotification();
+
   const loadData = async () => {
     try {
       setIsLoading(true);
-      const [recs, emps, depts] = await Promise.all([
-        isAdmin
-          ? attendanceService.getAllRecords()
-          : attendanceService.getByEmployeeId(user?.employeeId || 'EMP002'),
-        employeeService.getAll(),
+      const [attList, deptList] = await Promise.all([
+        attendanceService.getAll(),
         departmentService.getAll(),
       ]);
-      setRecords(recs);
-      setEmployees(emps);
-      setDepartments(depts);
-    } catch (e) {
-      console.error(e);
+      setRecords(attList);
+      setDepartments(deptList);
+    } catch (e: any) {
+      showToast('error', 'Error Loading Attendance', e.message);
     } finally {
       setIsLoading(false);
     }
@@ -41,123 +36,121 @@ export const Attendance: React.FC = () => {
 
   useEffect(() => {
     loadData();
-  }, [isAdmin, user]);
+  }, []);
 
   const columns: Column<AttendanceRecord>[] = [
     {
-      key: 'employeeName',
-      header: 'Employee',
+      key: 'attendanceId',
+      header: 'Audit ID',
       sortable: true,
-      render: (r) => (
-        <div>
-          <div className="font-semibold text-slate-100">{r.employeeName}</div>
-          <div className="text-[11px] font-mono text-blue-400">{r.employeeId}</div>
-        </div>
-      ),
+      render: (a) => <span className="font-mono font-semibold text-blue-400">{a.attendanceId}</span>,
     },
     {
-      key: 'departmentName',
-      header: 'Department',
+      key: 'employeeName',
+      header: 'Employee Staff',
       sortable: true,
-      render: (r) => <span className="text-slate-300">{r.departmentName}</span>,
+      render: (a) => (
+        <div>
+          <div className="font-semibold text-slate-100">{a.employeeName}</div>
+          <div className="text-[11px] font-mono text-slate-400">{a.employeeId} • {a.departmentName}</div>
+        </div>
+      ),
     },
     {
       key: 'date',
       header: 'Shift Date',
       sortable: true,
-      render: (r) => <span className="font-mono text-xs text-slate-300">{formatDate(r.date)}</span>,
+      render: (a) => <span className="font-mono text-xs text-slate-300">{formatDate(a.date)}</span>,
     },
     {
       key: 'checkIn',
-      header: 'Check In',
+      header: 'Gate Check-In',
       sortable: true,
-      render: (r) => (
+      render: (a) => (
         <span className="font-mono text-xs font-semibold text-emerald-400">
-          {r.checkIn || '—'}
+          {a.checkIn}
         </span>
       ),
     },
     {
       key: 'checkOut',
-      header: 'Check Out',
-      sortable: true,
-      render: (r) => (
-        <span className="font-mono text-xs font-semibold text-blue-400">
-          {r.checkOut || 'Active On-Shift'}
+      header: 'Gate Check-Out',
+      render: (a) => (
+        <span className="font-mono text-xs text-slate-400">
+          {a.checkOut || 'Active on Floor'}
         </span>
       ),
     },
     {
       key: 'deviceName',
-      header: 'Access Gate / Device',
-      render: (r) => (
-        <span className="text-xs text-slate-400 font-mono">
-          {r.deviceName}
-        </span>
-      ),
+      header: 'Access Hardware',
+      render: (a) => <span className="text-xs text-slate-400">{a.deviceName}</span>,
     },
     {
       key: 'status',
       header: 'Status',
       sortable: true,
-      render: (r) => <StatusBadge status={r.status} />,
+      render: (a) => <StatusBadge status={a.status} />,
     },
   ];
 
   const filters: FilterConfig[] = [
     {
-      key: 'departmentName',
-      label: 'Departments',
-      options: departments.map((d) => ({ label: d.departmentName, value: d.departmentName })),
-    },
-    {
       key: 'status',
       label: 'Attendance Status',
       options: [
-        { label: 'Present', value: 'PRESENT' },
-        { label: 'Late', value: 'LATE' },
-        { label: 'Half Day', value: 'HALF_DAY' },
+        { label: 'Present On-Time', value: 'PRESENT' },
+        { label: 'Late Gate Entry', value: 'LATE' },
+        { label: 'Half Day Shift', value: 'HALF_DAY' },
         { label: 'Absent', value: 'ABSENT' },
       ],
+    },
+    {
+      key: 'departmentName',
+      label: 'Department',
+      options: departments.map((d) => ({ label: d.departmentName, value: d.departmentName })),
     },
   ];
 
   return (
     <div className="space-y-6">
-      {/* Top Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-white tracking-tight">
-            {isAdmin ? 'Workforce Attendance & Turnstile Ledger' : 'My Attendance History'}
-          </h2>
+          <h2 className="text-2xl font-bold text-white tracking-tight">Gate Turnstile & Biometric Attendance</h2>
           <p className="text-xs text-slate-400 mt-1">
-            {isAdmin
-              ? 'Real-time logging from simulated RFID turnstiles, biometric scanners, and plant kiosks.'
-              : 'View your recorded clock-ins, punch device history, and shift hours.'}
+            Real-time optical and RFID turnstile punch ledger stored inside PostgreSQL ATTENDANCE table.
           </p>
         </div>
 
-        <Button
-          variant="emerald"
-          onClick={() => setIsSimulateOpen(true)}
-          leftIcon={<Radio className="w-4 h-4" />}
-        >
-          Simulate Attendance Punch
-        </Button>
+        <div className="flex items-center gap-2.5">
+          <Button
+            variant="outline"
+            onClick={loadData}
+            leftIcon={<RefreshCw className="w-4 h-4" />}
+          >
+            Refresh
+          </Button>
+
+          <Button
+            variant="primary"
+            onClick={() => setIsSimulateOpen(true)}
+            leftIcon={<Fingerprint className="w-4 h-4" />}
+          >
+            Simulate Gate Punch
+          </Button>
+        </div>
       </div>
 
-      {/* Table */}
       <DataTable
         data={records}
         columns={columns}
-        rowKey={(r) => r.attendanceId}
-        searchKey={(r) => `${r.employeeName} ${r.employeeId} ${r.departmentName} ${r.deviceName} ${r.date}`}
-        searchPlaceholder="Search punches by employee, ID, gate..."
+        rowKey={(a) => a.attendanceId}
+        searchKey={(a) => `${a.attendanceId} ${a.employeeName} ${a.employeeId} ${a.departmentName}`}
+        searchPlaceholder="Search attendance by employee, ID, department..."
         filters={filters}
         isLoading={isLoading}
       />
 
-      {/* Simulator Modal */}
       <SimulateAttendanceModal
         isOpen={isSimulateOpen}
         onClose={() => setIsSimulateOpen(false)}

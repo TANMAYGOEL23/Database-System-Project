@@ -1,14 +1,15 @@
 import React, { useState, useMemo } from 'react';
-import { Search, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Search, ArrowUpDown, ArrowUp, ArrowDown, Filter, X } from 'lucide-react';
 import { Pagination } from './Pagination';
 import { LoadingSpinner } from '../feedback/LoadingSpinner';
 import { EmptyState } from '../feedback/EmptyState';
 import { Input } from '../ui/Input';
+import { Button } from '../ui/Button';
 
 export interface Column<T> {
   key: string;
   header: string;
-  render?: (item: T) => React.ReactNode;
+  render?: (row: T) => React.ReactNode;
   sortable?: boolean;
   align?: 'left' | 'center' | 'right';
   width?: string;
@@ -17,248 +18,269 @@ export interface Column<T> {
 export interface FilterConfig {
   key: string;
   label: string;
-  options: { label: string; value: string }[];
+  options: { label: string; value: string | number }[];
 }
 
-interface DataTableProps<T> {
+export interface DataTableProps<T> {
   data: T[];
   columns: Column<T>[];
-  searchKey?: string | ((item: T) => string);
+  rowKey: (row: T) => string | number;
+  searchKey?: (row: T) => string;
   searchPlaceholder?: string;
   filters?: FilterConfig[];
   isLoading?: boolean;
   emptyTitle?: string;
   emptyDescription?: string;
-  onEmptyAction?: () => void;
-  emptyActionLabel?: string;
+  onRowClick?: (row: T) => void;
   actions?: React.ReactNode;
-  pageSize?: number;
-  rowKey: (item: T) => string;
+  initialPageSize?: number;
 }
 
 export function DataTable<T>({
   data,
   columns,
+  rowKey,
   searchKey,
   searchPlaceholder = 'Search records...',
   filters = [],
   isLoading = false,
-  emptyTitle = 'No records found',
-  emptyDescription = 'Try adjusting your search or filters to find what you are looking for.',
-  onEmptyAction,
-  emptyActionLabel,
+  emptyTitle,
+  emptyDescription,
+  onRowClick,
   actions,
-  pageSize: initialPageSize = 10,
-  rowKey,
+  initialPageSize = 10,
 }: DataTableProps<T>) {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
-  const [sortKey, setSortKey] = useState<string | null>(null);
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(initialPageSize);
 
   const handleFilterChange = (key: string, value: string) => {
-    setActiveFilters((prev) => ({
-      ...prev,
-      [key]: value,
-    }));
+    setActiveFilters((prev) => {
+      const next = { ...prev };
+      if (!value) {
+        delete next[key];
+      } else {
+        next[key] = value;
+      }
+      return next;
+    });
+    setCurrentPage(1);
+  };
+
+  const clearFilters = () => {
+    setSearchTerm('');
+    setActiveFilters({});
     setCurrentPage(1);
   };
 
   const handleSort = (key: string) => {
-    if (sortKey === key) {
-      if (sortOrder === 'asc') {
-        setSortOrder('desc');
-      } else {
-        setSortKey(null);
-        setSortOrder('asc');
+    setSortConfig((prev) => {
+      if (prev && prev.key === key) {
+        if (prev.direction === 'asc') return { key, direction: 'desc' };
+        return null;
       }
-    } else {
-      setSortKey(key);
-      setSortOrder('asc');
-    }
+      return { key, direction: 'asc' };
+    });
   };
 
-  // Filtered and Sorted Data
-  const processedData = useMemo(() => {
-    let result = [...data];
-
-    // Search filter
-    if (searchTerm.trim() && searchKey) {
-      const q = searchTerm.toLowerCase();
-      result = result.filter((item) => {
-        if (typeof searchKey === 'function') {
-          return searchKey(item).toLowerCase().includes(q);
+  const filteredData = useMemo(() => {
+    return data.filter((item) => {
+      // Global text search
+      if (searchTerm && searchKey) {
+        const searchStr = searchKey(item).toLowerCase();
+        if (!searchStr.includes(searchTerm.toLowerCase())) {
+          return false;
         }
-        const val = (item as any)[searchKey];
-        return String(val || '').toLowerCase().includes(q);
-      });
-    }
-
-    // Dropdown filters
-    Object.entries(activeFilters).forEach(([key, filterVal]) => {
-      if (filterVal && filterVal !== 'ALL') {
-        result = result.filter((item) => String((item as any)[key]) === filterVal);
       }
-    });
 
-    // Sorting
-    if (sortKey) {
-      result.sort((a: any, b: any) => {
-        const valA = a[sortKey];
-        const valB = b[sortKey];
-
-        if (typeof valA === 'number' && typeof valB === 'number') {
-          return sortOrder === 'asc' ? valA - valB : valB - valA;
+      // Dropdown filters
+      for (const [key, value] of Object.entries(activeFilters)) {
+        if (value && (item as any)[key] !== undefined) {
+          const itemVal = String((item as any)[key]);
+          if (itemVal !== value) return false;
         }
+      }
 
-        const strA = String(valA || '').toLowerCase();
-        const strB = String(valB || '').toLowerCase();
-        return sortOrder === 'asc' ? strA.localeCompare(strB) : strB.localeCompare(strA);
-      });
-    }
+      return true;
+    });
+  }, [data, searchTerm, searchKey, activeFilters]);
 
-    return result;
-  }, [data, searchTerm, searchKey, activeFilters, sortKey, sortOrder]);
+  const sortedData = useMemo(() => {
+    if (!sortConfig) return filteredData;
+    return [...filteredData].sort((a, b) => {
+      const aVal = (a as any)[sortConfig.key];
+      const bVal = (b as any)[sortConfig.key];
+      if (aVal === bVal) return 0;
+      if (aVal === undefined || aVal === null) return 1;
+      if (bVal === undefined || bVal === null) return -1;
 
-  const totalPages = Math.ceil(processedData.length / pageSize);
+      if (typeof aVal === 'number' && typeof bVal === 'number') {
+        return sortConfig.direction === 'asc' ? aVal - bVal : bVal - aVal;
+      }
+
+      const strA = String(aVal).toLowerCase();
+      const strB = String(bVal).toLowerCase();
+      return sortConfig.direction === 'asc' ? strA.localeCompare(strB) : strB.localeCompare(strA);
+    });
+  }, [filteredData, sortConfig]);
+
+  const totalPages = Math.ceil(sortedData.length / pageSize);
   const paginatedData = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
-    return processedData.slice(start, start + pageSize);
-  }, [processedData, currentPage, pageSize]);
+    return sortedData.slice(start, start + pageSize);
+  }, [sortedData, currentPage, pageSize]);
+
+  const hasActiveFilters = searchTerm !== '' || Object.keys(activeFilters).length > 0;
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900 shadow-xl overflow-hidden">
-      {/* Header controls: Search, Filters, Action buttons */}
-      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 p-5 border-b border-slate-800 bg-slate-900/90">
-        <div className="flex flex-wrap items-center gap-3 flex-1">
-          {searchKey && (
-            <div className="w-full sm:w-72">
-              <Input
-                placeholder={searchPlaceholder}
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setCurrentPage(1);
-                }}
-                leftIcon={<Search className="w-4 h-4 text-slate-400" />}
-              />
-            </div>
-          )}
+    <div className="w-full bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+      {/* Search & Filter Toolbar */}
+      {(searchKey || filters.length > 0 || actions) && (
+        <div className="p-4 border-b border-slate-800 bg-slate-950/40 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2.5 flex-1">
+            {searchKey && (
+              <div className="w-full sm:w-72">
+                <Input
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  placeholder={searchPlaceholder}
+                  leftIcon={<Search className="w-4 h-4" />}
+                />
+              </div>
+            )}
 
-          {filters.map((filter) => (
-            <div key={filter.key} className="w-full sm:w-auto">
-              <select
-                value={activeFilters[filter.key] || 'ALL'}
-                onChange={(e) => handleFilterChange(filter.key, e.target.value)}
-                className="w-full rounded-lg bg-slate-900 border border-slate-700 text-slate-200 text-sm py-2 px-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            {filters.map((filter) => (
+              <div key={filter.key} className="w-full sm:w-auto">
+                <select
+                  value={activeFilters[filter.key] || ''}
+                  onChange={(e) => handleFilterChange(filter.key, e.target.value)}
+                  className="w-full sm:w-auto bg-slate-900 border border-slate-800 rounded-lg py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                >
+                  <option value="">All {filter.label}</option>
+                  {filter.options.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ))}
+
+            {hasActiveFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearFilters}
+                leftIcon={<X className="w-3.5 h-3.5" />}
+                className="text-slate-400 hover:text-slate-200 text-xs"
               >
-                <option value="ALL">All {filter.label}</option>
-                {filter.options.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          ))}
-        </div>
+                Reset Filters
+              </Button>
+            )}
+          </div>
 
-        {actions && <div className="flex items-center gap-3">{actions}</div>}
-      </div>
+          {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
+        </div>
+      )}
 
       {/* Table Body */}
-      {isLoading ? (
-        <LoadingSpinner />
-      ) : processedData.length === 0 ? (
-        <div className="p-8">
-          <EmptyState
-            title={emptyTitle}
-            description={emptyDescription}
-            actionLabel={emptyActionLabel}
-            onAction={onEmptyAction}
-          />
-        </div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-200">
-            <thead className="bg-slate-950/80 text-xs uppercase font-semibold tracking-wider text-slate-400 border-b border-slate-800">
-              <tr>
+      <div className="overflow-x-auto">
+        {isLoading ? (
+          <LoadingSpinner />
+        ) : paginatedData.length === 0 ? (
+          <div className="p-8">
+            <EmptyState
+              title={emptyTitle || (hasActiveFilters ? 'No matching records' : 'No records found')}
+              description={
+                emptyDescription ||
+                (hasActiveFilters
+                  ? 'Try clearing your search term or active category filters.'
+                  : 'There are currently no items logged in this section.')
+              }
+              actionText={hasActiveFilters ? 'Clear Filters' : undefined}
+              onAction={hasActiveFilters ? clearFilters : undefined}
+            />
+          </div>
+        ) : (
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-slate-800 bg-slate-950/80 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
                 {columns.map((col) => (
                   <th
                     key={col.key}
-                    scope="col"
-                    className={`px-6 py-4 ${col.width || ''} ${
-                      col.align === 'right'
-                        ? 'text-right'
-                        : col.align === 'center'
-                        ? 'text-center'
-                        : 'text-left'
-                    } ${col.sortable ? 'cursor-pointer select-none hover:text-white' : ''}`}
-                    onClick={() => col.sortable && handleSort(col.key)}
+                    style={{ width: col.width }}
+                    className={`py-3.5 px-4 ${
+                      col.align === 'center' ? 'text-center' : col.align === 'right' ? 'text-right' : 'text-left'
+                    }`}
                   >
-                    <div
-                      className={`inline-flex items-center gap-1.5 ${
-                        col.align === 'right' ? 'justify-end w-full' : ''
-                      }`}
-                    >
-                      <span>{col.header}</span>
-                      {col.sortable && (
-                        <span className="text-slate-500">
-                          {sortKey === col.key ? (
-                            sortOrder === 'asc' ? (
-                              <ArrowUp className="w-3.5 h-3.5 text-blue-400" />
-                            ) : (
-                              <ArrowDown className="w-3.5 h-3.5 text-blue-400" />
-                            )
+                    {col.sortable ? (
+                      <button
+                        onClick={() => handleSort(col.key)}
+                        className="inline-flex items-center gap-1.5 hover:text-slate-200 transition-colors uppercase"
+                      >
+                        <span>{col.header}</span>
+                        {sortConfig?.key === col.key ? (
+                          sortConfig.direction === 'asc' ? (
+                            <ArrowUp className="w-3.5 h-3.5 text-blue-400" />
                           ) : (
-                            <ArrowUpDown className="w-3.5 h-3.5" />
-                          )}
-                        </span>
-                      )}
-                    </div>
+                            <ArrowDown className="w-3.5 h-3.5 text-blue-400" />
+                          )
+                        ) : (
+                          <ArrowUpDown className="w-3 h-3 text-slate-600" />
+                        )}
+                      </button>
+                    ) : (
+                      col.header
+                    )}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/80 font-normal">
-              {paginatedData.map((item) => (
+            <tbody className="divide-y divide-slate-800/60 text-xs font-normal">
+              {paginatedData.map((row) => (
                 <tr
-                  key={rowKey(item)}
-                  className="transition-colors hover:bg-slate-800/50 group"
+                  key={rowKey(row)}
+                  onClick={() => onRowClick?.(row)}
+                  className={`transition-colors duration-150 ${
+                    onRowClick ? 'cursor-pointer hover:bg-slate-800/50' : 'hover:bg-slate-800/30'
+                  }`}
                 >
                   {columns.map((col) => (
                     <td
                       key={col.key}
-                      className={`px-6 py-4 whitespace-nowrap ${
-                        col.align === 'right'
-                          ? 'text-right'
-                          : col.align === 'center'
+                      className={`py-3 px-4 ${
+                        col.align === 'center'
                           ? 'text-center'
+                          : col.align === 'right'
+                          ? 'text-right'
                           : 'text-left'
                       }`}
                     >
-                      {col.render ? col.render(item) : (item as any)[col.key] ?? '-'}
+                      {col.render ? col.render(row) : (row as any)[col.key]}
                     </td>
                   ))}
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* Pagination */}
-      {!isLoading && processedData.length > 0 && (
+      {/* Pagination Footer */}
+      {!isLoading && sortedData.length > 0 && (
         <Pagination
           currentPage={currentPage}
           totalPages={totalPages}
-          totalItems={processedData.length}
+          totalItems={sortedData.length}
           pageSize={pageSize}
           onPageChange={setCurrentPage}
-          onPageSizeChange={(newSize) => {
-            setPageSize(newSize);
+          onPageSizeChange={(size) => {
+            setPageSize(size);
             setCurrentPage(1);
           }}
         />

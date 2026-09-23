@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Eye, Edit2, Trash2, Users, Mail, Phone, MapPin, Calendar, DollarSign } from 'lucide-react';
+import { Plus, Edit2, Trash2, Users, Search, DollarSign, Calendar, Mail, Phone, MapPin } from 'lucide-react';
 import { DataTable, Column, FilterConfig } from '../../components/tables/DataTable';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
@@ -18,13 +18,10 @@ export const Employees: React.FC = () => {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Modals
+  // Modals state
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-
-  // Selected Employee
-  const [selectedEmp, setSelectedEmp] = useState<Employee | null>(null);
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [isEditing, setIsEditing] = useState(false);
 
   // Form State
@@ -50,17 +47,17 @@ export const Employees: React.FC = () => {
   const loadData = async () => {
     try {
       setIsLoading(true);
-      const [emps, depts] = await Promise.all([
+      const [empList, deptList] = await Promise.all([
         employeeService.getAll(),
         departmentService.getAll(),
       ]);
-      setEmployees(emps);
-      setDepartments(depts);
-      if (depts.length > 0 && !formData.departmentId) {
-        setFormData((prev) => ({ ...prev, departmentId: depts[0].departmentId }));
+      setEmployees(empList);
+      setDepartments(deptList);
+      if (deptList.length > 0 && !formData.departmentId) {
+        setFormData((prev) => ({ ...prev, departmentId: deptList[0].departmentId }));
       }
-    } catch (err: any) {
-      showToast('error', 'Data Load Error', err.message);
+    } catch (e: any) {
+      showToast('error', 'Error Loading Data', e.message);
     } finally {
       setIsLoading(false);
     }
@@ -72,7 +69,7 @@ export const Employees: React.FC = () => {
 
   const handleOpenCreate = () => {
     setIsEditing(false);
-    setSelectedEmp(null);
+    setSelectedEmployee(null);
     setFormData({
       firstName: '',
       lastName: '',
@@ -84,7 +81,7 @@ export const Employees: React.FC = () => {
       salary: '75000',
       joiningDate: new Date().toISOString().split('T')[0],
       status: 'ACTIVE',
-      position: '',
+      position: 'Plant Technician',
     });
     setFormErrors({});
     setIsFormOpen(true);
@@ -92,7 +89,7 @@ export const Employees: React.FC = () => {
 
   const handleOpenEdit = (emp: Employee) => {
     setIsEditing(true);
-    setSelectedEmp(emp);
+    setSelectedEmployee(emp);
     setFormData({
       firstName: emp.firstName,
       lastName: emp.lastName,
@@ -110,36 +107,19 @@ export const Employees: React.FC = () => {
     setIsFormOpen(true);
   };
 
-  const handleOpenDetail = (emp: Employee) => {
-    setSelectedEmp(emp);
-    setIsDetailOpen(true);
-  };
-
-  const handleOpenDelete = (emp: Employee) => {
-    setSelectedEmp(emp);
-    setIsDeleteOpen(true);
-  };
-
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
-
     if (!formData.firstName.trim()) errors.firstName = 'First name is required';
     if (!formData.lastName.trim()) errors.lastName = 'Last name is required';
+    if (!formData.phone.trim()) errors.phone = 'Phone number is required';
     if (!formData.email.trim()) {
       errors.email = 'Email is required';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      errors.email = 'Please enter a valid email address';
+      errors.email = 'Please enter a valid email';
     }
-    if (!formData.phone.trim()) errors.phone = 'Phone number is required';
     if (!formData.address.trim()) errors.address = 'Address is required';
-    if (!formData.departmentId) errors.departmentId = 'Department is required';
-
-    const salaryNum = parseFloat(formData.salary);
-    if (isNaN(salaryNum) || salaryNum <= 0) {
-      errors.salary = 'Salary must be a positive numeric value';
-    }
-
-    if (!formData.joiningDate) errors.joiningDate = 'Joining date is required';
+    const sal = parseFloat(formData.salary);
+    if (isNaN(sal) || sal <= 0) errors.salary = 'Salary must be greater than 0';
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -150,40 +130,48 @@ export const Employees: React.FC = () => {
     if (!validateForm()) return;
 
     const dept = departments.find((d) => d.departmentId === formData.departmentId);
+    const departmentName = dept ? dept.departmentName : 'Operations';
 
     try {
       setIsSubmitting(true);
-      if (isEditing && selectedEmp) {
-        await employeeService.update(selectedEmp.employeeId, {
-          ...formData,
-          salary: parseFloat(formData.salary),
-          departmentName: dept?.departmentName,
-        });
-        showToast('success', 'Employee Updated', `${formData.firstName} ${formData.lastName} was successfully updated.`);
+      const payload = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        gender: formData.gender,
+        phone: formData.phone,
+        email: formData.email,
+        address: formData.address,
+        departmentId: formData.departmentId,
+        departmentName,
+        salary: parseFloat(formData.salary),
+        joiningDate: formData.joiningDate,
+        status: formData.status,
+        position: formData.position,
+      };
+
+      if (isEditing && selectedEmployee) {
+        await employeeService.update(selectedEmployee.employeeId, payload);
+        showToast('success', 'Employee Updated', `${formData.firstName} ${formData.lastName} saved.`);
       } else {
-        await employeeService.create({
-          ...formData,
-          salary: parseFloat(formData.salary),
-          departmentName: dept?.departmentName,
-        });
-        showToast('success', 'Employee Created', `${formData.firstName} ${formData.lastName} has been registered.`);
+        await employeeService.create(payload);
+        showToast('success', 'Employee Created', `${formData.firstName} ${formData.lastName} added to database.`);
       }
 
       setIsFormOpen(false);
       loadData();
     } catch (err: any) {
-      showToast('error', 'Operation Failed', err.message || 'Unable to save employee details');
+      showToast('error', 'Operation Failed', err.message);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleDeleteConfirm = async () => {
-    if (!selectedEmp) return;
+    if (!selectedEmployee) return;
     try {
       setIsSubmitting(true);
-      await employeeService.delete(selectedEmp.employeeId);
-      showToast('success', 'Employee Removed', `Record for ${selectedEmp.fullName || selectedEmp.employeeId} was deleted.`);
+      await employeeService.delete(selectedEmployee.employeeId);
+      showToast('success', 'Employee Deleted', `${selectedEmployee.fullName} has been removed.`);
       setIsDeleteOpen(false);
       loadData();
     } catch (err: any) {
@@ -196,18 +184,18 @@ export const Employees: React.FC = () => {
   const columns: Column<Employee>[] = [
     {
       key: 'employeeId',
-      header: 'Emp ID',
+      header: 'Staff ID',
       sortable: true,
       render: (emp) => <span className="font-mono font-semibold text-blue-400">{emp.employeeId}</span>,
     },
     {
       key: 'fullName',
-      header: 'Name',
+      header: 'Full Name & Position',
       sortable: true,
       render: (emp) => (
         <div>
           <div className="font-semibold text-slate-100">{emp.fullName || `${emp.firstName} ${emp.lastName}`}</div>
-          <div className="text-[11px] text-slate-400">{emp.position || 'Staff Specialist'}</div>
+          <div className="text-[11px] text-slate-400">{emp.position || 'Plant Technician'}</div>
         </div>
       ),
     },
@@ -215,30 +203,34 @@ export const Employees: React.FC = () => {
       key: 'departmentName',
       header: 'Department',
       sortable: true,
-      render: (emp) => <span className="text-slate-300">{emp.departmentName || '—'}</span>,
+      render: (emp) => <span className="text-slate-300 text-xs">{emp.departmentName}</span>,
     },
     {
-      key: 'email',
-      header: 'Email',
-      render: (emp) => <span className="font-mono text-xs text-slate-300">{emp.email}</span>,
-    },
-    {
-      key: 'phone',
-      header: 'Phone',
-      render: (emp) => <span className="font-mono text-xs text-slate-400">{emp.phone}</span>,
+      key: 'contact',
+      header: 'Contact Info',
+      render: (emp) => (
+        <div className="text-[11px] space-y-0.5">
+          <div className="text-slate-300">{emp.email}</div>
+          <div className="text-slate-400 font-mono">{emp.phone}</div>
+        </div>
+      ),
     },
     {
       key: 'salary',
-      header: 'Annual Salary',
+      header: 'Annual Salary ($)',
       sortable: true,
       align: 'right',
-      render: (emp) => <span className="font-mono font-semibold text-emerald-400">{formatCurrency(emp.salary)}</span>,
+      render: (emp) => (
+        <span className="font-mono font-bold text-slate-200 text-xs">
+          {formatCurrency(emp.salary)}
+        </span>
+      ),
     },
     {
       key: 'joiningDate',
-      header: 'Joined',
+      header: 'Joined Date',
       sortable: true,
-      render: (emp) => <span className="text-xs text-slate-400">{formatDate(emp.joiningDate)}</span>,
+      render: (emp) => <span className="font-mono text-xs text-slate-400">{formatDate(emp.joiningDate)}</span>,
     },
     {
       key: 'status',
@@ -253,13 +245,6 @@ export const Employees: React.FC = () => {
       render: (emp) => (
         <div className="flex items-center justify-end gap-1.5">
           <button
-            onClick={() => handleOpenDetail(emp)}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-            title="View Details"
-          >
-            <Eye className="w-4 h-4" />
-          </button>
-          <button
             onClick={() => handleOpenEdit(emp)}
             className="p-1.5 rounded-lg text-blue-400 hover:text-blue-300 hover:bg-blue-950/50 transition-colors"
             title="Edit Employee"
@@ -267,7 +252,10 @@ export const Employees: React.FC = () => {
             <Edit2 className="w-4 h-4" />
           </button>
           <button
-            onClick={() => handleOpenDelete(emp)}
+            onClick={() => {
+              setSelectedEmployee(emp);
+              setIsDeleteOpen(true);
+            }}
             className="p-1.5 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-950/50 transition-colors"
             title="Delete Employee"
           >
@@ -281,12 +269,12 @@ export const Employees: React.FC = () => {
   const filters: FilterConfig[] = [
     {
       key: 'departmentId',
-      label: 'Departments',
+      label: 'Department',
       options: departments.map((d) => ({ label: d.departmentName, value: d.departmentId })),
     },
     {
       key: 'status',
-      label: 'Statuses',
+      label: 'Status',
       options: [
         { label: 'Active', value: 'ACTIVE' },
         { label: 'On Leave', value: 'ON_LEAVE' },
@@ -297,12 +285,12 @@ export const Employees: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-white tracking-tight">Employee Directory & Management</h2>
+          <h2 className="text-2xl font-bold text-white tracking-tight">Plant Workforce Directory</h2>
           <p className="text-xs text-slate-400 mt-1">
-            Maintain plant personnel, compensation structures, department affiliations, and status records.
+            Maintain employee records, department allocations, shift classifications, and compensation.
           </p>
         </div>
 
@@ -311,17 +299,17 @@ export const Employees: React.FC = () => {
           onClick={handleOpenCreate}
           leftIcon={<Plus className="w-4 h-4" />}
         >
-          Add New Employee
+          Add Employee
         </Button>
       </div>
 
-      {/* Employees Table */}
+      {/* Data Table */}
       <DataTable
         data={employees}
         columns={columns}
         rowKey={(emp) => emp.employeeId}
-        searchKey={(emp) => `${emp.employeeId} ${emp.fullName || ''} ${emp.firstName} ${emp.lastName} ${emp.email}`}
-        searchPlaceholder="Search by ID, name, email..."
+        searchKey={(emp) => `${emp.employeeId} ${emp.firstName} ${emp.lastName} ${emp.email} ${emp.phone} ${emp.position || ''}`}
+        searchPlaceholder="Search employees by name, ID, position..."
         filters={filters}
         isLoading={isLoading}
       />
@@ -330,8 +318,8 @@ export const Employees: React.FC = () => {
       <Modal
         isOpen={isFormOpen}
         onClose={() => setIsFormOpen(false)}
-        title={isEditing ? `Edit Employee: ${selectedEmp?.employeeId}` : 'Register New Employee'}
-        subtitle="PostgreSQL EMPLOYEE relational schema entity form"
+        title={isEditing ? `Edit Employee: ${selectedEmployee?.employeeId}` : 'Add New Plant Employee'}
+        subtitle="PostgreSQL EMPLOYEE relational table schema mapping"
         maxWidth="2xl"
         icon={<Users className="w-5 h-5 text-blue-400" />}
       >
@@ -341,6 +329,7 @@ export const Employees: React.FC = () => {
               label="First Name"
               value={formData.firstName}
               onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+              placeholder="e.g. Elena"
               error={formErrors.firstName}
               required
             />
@@ -348,6 +337,7 @@ export const Employees: React.FC = () => {
               label="Last Name"
               value={formData.lastName}
               onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+              placeholder="e.g. Rostova"
               error={formErrors.lastName}
               required
             />
@@ -366,7 +356,26 @@ export const Employees: React.FC = () => {
               required
             />
             <Input
-              label="Phone Number"
+              label="Position / Role Title"
+              value={formData.position}
+              onChange={(e) => setFormData({ ...formData, position: e.target.value })}
+              placeholder="e.g. CNC Mill Machinist"
+            />
+            <Select
+              label="Assigned Department"
+              value={formData.departmentId}
+              onChange={(e) => setFormData({ ...formData, departmentId: e.target.value })}
+              options={departments.map((d) => ({
+                label: d.departmentName,
+                value: d.departmentId,
+              }))}
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              label="Phone Contact"
               value={formData.phone}
               onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
               placeholder="+1 (555) 000-0000"
@@ -374,33 +383,13 @@ export const Employees: React.FC = () => {
               required
             />
             <Input
-              label="Corporate Email"
+              label="Email Address"
               type="email"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              placeholder="user@smartfactory.internal"
+              placeholder="operator@megafactory.internal"
               error={formErrors.email}
               required
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Select
-              label="Assigned Department"
-              value={formData.departmentId}
-              onChange={(e) => setFormData({ ...formData, departmentId: e.target.value })}
-              options={departments.map((d) => ({
-                label: `${d.departmentName}`,
-                value: d.departmentId,
-              }))}
-              error={formErrors.departmentId}
-              required
-            />
-            <Input
-              label="Job Position / Role"
-              value={formData.position}
-              onChange={(e) => setFormData({ ...formData, position: e.target.value })}
-              placeholder="e.g. Lead CNC Specialist"
             />
           </div>
 
@@ -415,10 +404,8 @@ export const Employees: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Input
-              label="Annual Base Salary ($)"
+              label="Annual Salary ($)"
               type="number"
-              min="0"
-              step="500"
               value={formData.salary}
               onChange={(e) => setFormData({ ...formData, salary: e.target.value })}
               error={formErrors.salary}
@@ -429,7 +416,6 @@ export const Employees: React.FC = () => {
               type="date"
               value={formData.joiningDate}
               onChange={(e) => setFormData({ ...formData, joiningDate: e.target.value })}
-              error={formErrors.joiningDate}
               required
             />
             <Select
@@ -445,76 +431,16 @@ export const Employees: React.FC = () => {
             />
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
             <Button variant="secondary" onClick={() => setIsFormOpen(false)} type="button">
               Cancel
             </Button>
             <Button variant="primary" type="submit" isLoading={isSubmitting}>
-              {isEditing ? 'Save Changes' : 'Register Employee'}
+              {isEditing ? 'Save Employee' : 'Add Employee'}
             </Button>
           </div>
         </form>
       </Modal>
-
-      {/* Employee Detail Modal */}
-      {selectedEmp && (
-        <Modal
-          isOpen={isDetailOpen}
-          onClose={() => setIsDetailOpen(false)}
-          title={`Employee Record: ${selectedEmp.fullName || selectedEmp.employeeId}`}
-          subtitle={`ID: ${selectedEmp.employeeId} • ${selectedEmp.departmentName}`}
-          maxWidth="lg"
-          icon={<Users className="w-5 h-5 text-blue-400" />}
-        >
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 rounded-xl bg-slate-950/60 border border-slate-800">
-              <div>
-                <h4 className="text-base font-bold text-white">{selectedEmp.fullName || `${selectedEmp.firstName} ${selectedEmp.lastName}`}</h4>
-                <p className="text-xs text-blue-400 font-mono">{selectedEmp.position || 'Staff Specialist'}</p>
-              </div>
-              <StatusBadge status={selectedEmp.status} />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 text-xs">
-              <div className="p-3.5 rounded-lg bg-slate-850/60 border border-slate-800 space-y-1">
-                <span className="text-slate-400">Department</span>
-                <p className="font-semibold text-slate-200">{selectedEmp.departmentName}</p>
-              </div>
-              <div className="p-3.5 rounded-lg bg-slate-850/60 border border-slate-800 space-y-1">
-                <span className="text-slate-400">Annual Compensation</span>
-                <p className="font-mono font-semibold text-emerald-400 text-sm">{formatCurrency(selectedEmp.salary)}</p>
-              </div>
-              <div className="p-3.5 rounded-lg bg-slate-850/60 border border-slate-800 space-y-1">
-                <span className="text-slate-400">Email Address</span>
-                <p className="font-mono text-slate-200">{selectedEmp.email}</p>
-              </div>
-              <div className="p-3.5 rounded-lg bg-slate-850/60 border border-slate-800 space-y-1">
-                <span className="text-slate-400">Phone Contact</span>
-                <p className="font-mono text-slate-200">{selectedEmp.phone}</p>
-              </div>
-              <div className="p-3.5 rounded-lg bg-slate-850/60 border border-slate-800 space-y-1">
-                <span className="text-slate-400">Joining Date</span>
-                <p className="text-slate-200">{formatDate(selectedEmp.joiningDate)}</p>
-              </div>
-              <div className="p-3.5 rounded-lg bg-slate-850/60 border border-slate-800 space-y-1">
-                <span className="text-slate-400">Gender</span>
-                <p className="text-slate-200">{selectedEmp.gender}</p>
-              </div>
-            </div>
-
-            <div className="p-3.5 rounded-lg bg-slate-850/60 border border-slate-800 text-xs">
-              <span className="text-slate-400">Address</span>
-              <p className="text-slate-200 mt-0.5">{selectedEmp.address}</p>
-            </div>
-
-            <div className="flex justify-end pt-3 border-t border-slate-800">
-              <Button variant="secondary" onClick={() => setIsDetailOpen(false)}>
-                Close
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
 
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog
@@ -522,8 +448,7 @@ export const Employees: React.FC = () => {
         onClose={() => setIsDeleteOpen(false)}
         onConfirm={handleDeleteConfirm}
         title="Delete Employee Record"
-        message={`Are you sure you want to permanently delete employee ${selectedEmp?.fullName || selectedEmp?.employeeId}? This will remove all associated user login credentials and archive attendance history.`}
-        confirmText="Delete Record"
+        message={`Are you sure you want to delete ${selectedEmployee?.fullName || selectedEmployee?.firstName}? This will remove associated attendance and payroll records.`}
         isLoading={isSubmitting}
       />
     </div>

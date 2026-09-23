@@ -1,40 +1,30 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldAlert, ArrowLeft, LayoutDashboard } from 'lucide-react';
+import { ShieldAlert, ArrowLeft } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
-import { useAuth } from '../../context/AuthContext';
 
 export const Unauthorized: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
 
   return (
-    <div className="min-h-[70vh] flex flex-col items-center justify-center text-center p-6">
-      <div className="p-4 rounded-2xl bg-rose-950/50 border border-rose-600/40 text-rose-400 mb-6">
-        <ShieldAlert className="w-12 h-12" />
-      </div>
-      <h1 className="text-2xl font-bold text-white tracking-tight sm:text-3xl">
-        403 - Administrative Access Required
-      </h1>
-      <p className="mt-2 text-sm text-slate-400 max-w-md leading-relaxed">
-        Your current active account role is <strong className="text-blue-400 font-mono">{user?.role}</strong>. This module or administrative operation is restricted to <strong className="text-amber-400 font-mono">ADMIN</strong> users according to the ERP Role-Based Access Control matrix.
-      </p>
-
-      <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-        <Button
-          variant="secondary"
-          onClick={() => navigate(-1)}
-          leftIcon={<ArrowLeft className="w-4 h-4" />}
-        >
-          Go Back
-        </Button>
-        <Button
-          variant="primary"
-          onClick={() => navigate('/dashboard')}
-          leftIcon={<LayoutDashboard className="w-4 h-4" />}
-        >
-          Return to Dashboard
-        </Button>
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+      <div className="max-w-md w-full text-center bg-slate-900 border border-slate-800 rounded-2xl p-8 space-y-4 shadow-2xl">
+        <div className="inline-flex p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400">
+          <ShieldAlert className="w-12 h-12" />
+        </div>
+        <h2 className="text-xl font-bold text-white">403 — Restricted Industrial Area</h2>
+        <p className="text-xs text-slate-400 leading-relaxed">
+          Your current operator security credentials do not grant access to this plant system.
+        </p>
+        <div className="pt-2">
+          <Button
+            variant="primary"
+            onClick={() => navigate('/dashboard')}
+            leftIcon={<ArrowLeft className="w-4 h-4" />}
+          >
+            Return to Workstation
+          </Button>
+        </div>
       </div>
     </div>
   );

@@ -4,9 +4,9 @@ export interface Robot {
   robotId: string;
   robotName: string;
   model: string;
-  battery: number; // 0 - 100%
+  battery: number;
   status: RobotStatus;
-  currentLocation: string; // e.g. "Zone A - Shelf S04"
+  currentLocation: string;
   payloadCapacityKg: number;
   totalTasksCompleted: number;
   lastActive?: string;
@@ -23,7 +23,7 @@ export interface RobotTask {
   productId: string;
   productName?: string;
   quantity: number;
-  targetLocation: string; // e.g. "Dispatch Bay 2"
+  targetLocation: string;
   startTime?: string;
   endTime?: string;
   status: RobotTaskStatus;

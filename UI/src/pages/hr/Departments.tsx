@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Building2, Edit2, Trash2, Users, MapPin, UserCheck } from 'lucide-react';
+import { Plus, Edit2, Trash2, Building2, Users, MapPin } from 'lucide-react';
 import { DataTable, Column } from '../../components/tables/DataTable';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
@@ -28,6 +28,7 @@ export const Departments: React.FC = () => {
     managerId: '',
     location: '',
   });
+
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -36,14 +37,14 @@ export const Departments: React.FC = () => {
   const loadData = async () => {
     try {
       setIsLoading(true);
-      const [depts, emps] = await Promise.all([
+      const [deptList, empList] = await Promise.all([
         departmentService.getAll(),
         employeeService.getAll(),
       ]);
-      setDepartments(depts);
-      setEmployees(emps);
-    } catch (err: any) {
-      showToast('error', 'Error Loading Departments', err.message);
+      setDepartments(deptList);
+      setEmployees(empList);
+    } catch (e: any) {
+      showToast('error', 'Error Loading Departments', e.message);
     } finally {
       setIsLoading(false);
     }
@@ -59,7 +60,7 @@ export const Departments: React.FC = () => {
     setFormData({
       departmentName: '',
       managerId: employees[0]?.employeeId || '',
-      location: '',
+      location: 'Building A, Floor 1',
     });
     setFormErrors({});
     setIsFormOpen(true);
@@ -70,26 +71,27 @@ export const Departments: React.FC = () => {
     setSelectedDept(dept);
     setFormData({
       departmentName: dept.departmentName,
-      managerId: dept.managerId,
+      managerId: dept.managerId || '',
       location: dept.location || '',
     });
     setFormErrors({});
     setIsFormOpen(true);
   };
 
-  const handleOpenDelete = (dept: Department) => {
-    setSelectedDept(dept);
-    setIsDeleteOpen(true);
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+    if (!formData.departmentName.trim()) errors.departmentName = 'Department name is required';
+    if (!formData.location.trim()) errors.location = 'Location is required';
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.departmentName.trim()) {
-      setFormErrors({ departmentName: 'Department name is required' });
-      return;
-    }
+    if (!validateForm()) return;
 
-    const manager = employees.find((e) => e.employeeId === formData.managerId);
+    const manager = employees.find((emp) => emp.employeeId === formData.managerId);
+    const managerName = manager ? manager.fullName || `${manager.firstName} ${manager.lastName}` : undefined;
 
     try {
       setIsSubmitting(true);
@@ -97,18 +99,18 @@ export const Departments: React.FC = () => {
         await departmentService.update(selectedDept.departmentId, {
           departmentName: formData.departmentName,
           managerId: formData.managerId,
-          managerName: manager?.fullName || manager?.firstName,
+          managerName,
           location: formData.location,
         });
-        showToast('success', 'Department Updated', `${formData.departmentName} has been saved.`);
+        showToast('success', 'Department Updated', `${formData.departmentName} updated successfully.`);
       } else {
         await departmentService.create({
           departmentName: formData.departmentName,
           managerId: formData.managerId,
-          managerName: manager?.fullName || manager?.firstName,
+          managerName,
           location: formData.location,
         });
-        showToast('success', 'Department Created', `${formData.departmentName} was established.`);
+        showToast('success', 'Department Created', `${formData.departmentName} added to database.`);
       }
 
       setIsFormOpen(false);
@@ -125,7 +127,7 @@ export const Departments: React.FC = () => {
     try {
       setIsSubmitting(true);
       await departmentService.delete(selectedDept.departmentId);
-      showToast('success', 'Department Deleted', `${selectedDept.departmentName} was removed.`);
+      showToast('success', 'Department Deleted', `${selectedDept.departmentName} has been removed.`);
       setIsDeleteOpen(false);
       loadData();
     } catch (err: any) {
@@ -140,32 +142,28 @@ export const Departments: React.FC = () => {
       key: 'departmentId',
       header: 'Dept ID',
       sortable: true,
-      render: (d) => <span className="font-mono font-semibold text-blue-400">{d.departmentId}</span>,
+      render: (dept) => <span className="font-mono font-semibold text-blue-400">{dept.departmentId}</span>,
     },
     {
       key: 'departmentName',
-      header: 'Department Name',
+      header: 'Department Title',
       sortable: true,
-      render: (d) => <span className="font-bold text-slate-100">{d.departmentName}</span>,
-    },
-    {
-      key: 'managerName',
-      header: 'Department Manager',
-      render: (d) => (
-        <div className="flex items-center gap-1.5 text-slate-300">
-          <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
-          <span>{d.managerName || d.managerId || 'Unassigned'}</span>
+      render: (dept) => (
+        <div>
+          <div className="font-semibold text-slate-100">{dept.departmentName}</div>
+          <div className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
+            <MapPin className="w-3 h-3 text-slate-500" />
+            {dept.location}
+          </div>
         </div>
       ),
     },
     {
-      key: 'location',
-      header: 'Plant Location',
-      render: (d) => (
-        <div className="flex items-center gap-1.5 text-slate-400 text-xs">
-          <MapPin className="w-3.5 h-3.5 text-slate-500" />
-          <span>{d.location || '—'}</span>
-        </div>
+      key: 'managerName',
+      header: 'Department Head / Manager',
+      sortable: true,
+      render: (dept) => (
+        <span className="text-slate-200 text-xs font-medium">{dept.managerName || 'Unassigned'}</span>
       ),
     },
     {
@@ -173,9 +171,10 @@ export const Departments: React.FC = () => {
       header: 'Staff Headcount',
       sortable: true,
       align: 'center',
-      render: (d) => (
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-blue-500/20 text-blue-300">
-          <Users className="w-3 h-3" /> {d.employeeCount}
+      render: (dept) => (
+        <span className="inline-flex items-center gap-1 font-mono text-xs text-slate-300 bg-slate-800/80 px-2.5 py-1 rounded-full border border-slate-700">
+          <Users className="w-3 h-3 text-blue-400" />
+          {dept.employeeCount} Personnel
         </span>
       ),
     },
@@ -183,17 +182,20 @@ export const Departments: React.FC = () => {
       key: 'actions',
       header: 'Actions',
       align: 'right',
-      render: (d) => (
+      render: (dept) => (
         <div className="flex items-center justify-end gap-1.5">
           <button
-            onClick={() => handleOpenEdit(d)}
+            onClick={() => handleOpenEdit(dept)}
             className="p-1.5 rounded-lg text-blue-400 hover:text-blue-300 hover:bg-blue-950/50 transition-colors"
             title="Edit Department"
           >
             <Edit2 className="w-4 h-4" />
           </button>
           <button
-            onClick={() => handleOpenDelete(d)}
+            onClick={() => {
+              setSelectedDept(dept);
+              setIsDeleteOpen(true);
+            }}
             className="p-1.5 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-950/50 transition-colors"
             title="Delete Department"
           >
@@ -210,7 +212,7 @@ export const Departments: React.FC = () => {
         <div>
           <h2 className="text-2xl font-bold text-white tracking-tight">Plant Department Hierarchy</h2>
           <p className="text-xs text-slate-400 mt-1">
-            Manage operational divisions, assigned leadership managers, and facility floor locations.
+            PostgreSQL DEPARTMENT entities, operational zones, manager assignments, and workforce headcounts.
           </p>
         </div>
 
@@ -219,7 +221,7 @@ export const Departments: React.FC = () => {
           onClick={handleOpenCreate}
           leftIcon={<Plus className="w-4 h-4" />}
         >
-          Create Department
+          Add Department
         </Button>
       </div>
 
@@ -228,16 +230,16 @@ export const Departments: React.FC = () => {
         columns={columns}
         rowKey={(d) => d.departmentId}
         searchKey={(d) => `${d.departmentId} ${d.departmentName} ${d.managerName || ''} ${d.location || ''}`}
-        searchPlaceholder="Search departments..."
+        searchPlaceholder="Search departments by name, ID, manager..."
         isLoading={isLoading}
       />
 
-      {/* Create / Edit Modal */}
+      {/* Form Modal */}
       <Modal
         isOpen={isFormOpen}
         onClose={() => setIsFormOpen(false)}
-        title={isEditing ? `Edit Department: ${selectedDept?.departmentId}` : 'Create New Department'}
-        subtitle="PostgreSQL DEPARTMENT table entity"
+        title={isEditing ? `Edit Department: ${selectedDept?.departmentId}` : 'Create New Plant Department'}
+        subtitle="PostgreSQL DEPARTMENT relational schema mapping"
         maxWidth="md"
         icon={<Building2 className="w-5 h-5 text-blue-400" />}
       >
@@ -246,27 +248,29 @@ export const Departments: React.FC = () => {
             label="Department Name"
             value={formData.departmentName}
             onChange={(e) => setFormData({ ...formData, departmentName: e.target.value })}
-            placeholder="e.g. Precision Manufacturing"
+            placeholder="e.g. Precision CNC Fabrication"
             error={formErrors.departmentName}
             required
           />
 
           <Select
-            label="Designated Department Manager"
+            label="Department Manager / Lead"
             value={formData.managerId}
             onChange={(e) => setFormData({ ...formData, managerId: e.target.value })}
-            options={employees.map((e) => ({
-              value: e.employeeId,
-              label: `${e.fullName || e.firstName + ' ' + e.lastName} (${e.employeeId})`,
+            options={employees.map((emp) => ({
+              label: `${emp.fullName || emp.firstName + ' ' + emp.lastName} (${emp.position || 'Staff'})`,
+              value: emp.employeeId,
             }))}
             required
           />
 
           <Input
-            label="Physical Plant Location"
+            label="Plant Facility Location / Building"
             value={formData.location}
             onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-            placeholder="e.g. Hangar 1 - Heavy Machining Floor"
+            placeholder="e.g. Building B - South Fabrication Wing"
+            error={formErrors.location}
+            required
           />
 
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
@@ -274,7 +278,7 @@ export const Departments: React.FC = () => {
               Cancel
             </Button>
             <Button variant="primary" type="submit" isLoading={isSubmitting}>
-              {isEditing ? 'Save Changes' : 'Create Department'}
+              {isEditing ? 'Save Department' : 'Create Department'}
             </Button>
           </div>
         </form>
@@ -285,7 +289,7 @@ export const Departments: React.FC = () => {
         onClose={() => setIsDeleteOpen(false)}
         onConfirm={handleDeleteConfirm}
         title="Delete Department"
-        message={`Are you sure you want to delete ${selectedDept?.departmentName}? Any associated personnel should be reassigned.`}
+        message={`Delete ${selectedDept?.departmentName}?`}
         isLoading={isSubmitting}
       />
     </div>

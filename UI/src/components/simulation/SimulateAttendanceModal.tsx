@@ -1,18 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Radio, UserCheck, Clock, MapPin } from 'lucide-react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Select } from '../ui/Select';
-import { Input } from '../ui/Input';
-import { attendanceService } from '../../services/attendanceService';
-import { employeeService } from '../../services/employeeService';
 import { useNotification } from '../../context/NotificationContext';
+import { employeeService } from '../../services/employeeService';
+import { attendanceService } from '../../services/attendanceService';
 import { Employee, AttendanceDevice } from '../../types/hr';
+import { Fingerprint, LogIn, LogOut, CheckCircle2 } from 'lucide-react';
 
-interface SimulateAttendanceModalProps {
+export interface SimulateAttendanceModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess?: () => void;
 }
 
 export const SimulateAttendanceModal: React.FC<SimulateAttendanceModalProps> = ({
@@ -22,140 +21,147 @@ export const SimulateAttendanceModal: React.FC<SimulateAttendanceModalProps> = (
 }) => {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [devices, setDevices] = useState<AttendanceDevice[]>([]);
-  const [selectedEmp, setSelectedEmp] = useState('');
-  const [selectedDevice, setSelectedDevice] = useState('');
-  const [action, setAction] = useState<'CHECK_IN' | 'CHECK_OUT'>('CHECK_IN');
-  const [simulatedTime, setSimulatedTime] = useState(
-    new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
-  );
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('');
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
+  const [punchType, setPunchType] = useState<'CHECK_IN' | 'CHECK_OUT'>('CHECK_IN');
   const [isLoading, setIsLoading] = useState(false);
-
   const { showToast } = useNotification();
 
   useEffect(() => {
     if (isOpen) {
-      const load = async () => {
-        const emps = await employeeService.getAll();
-        const devs = await attendanceService.getDevices();
-        setEmployees(emps);
-        setDevices(devs);
-        if (emps.length > 0) setSelectedEmp(emps[0].employeeId);
-        if (devs.length > 0) setSelectedDevice(devs[0].deviceId);
+      const loadInitial = async () => {
+        const [empList, devList] = await Promise.all([
+          employeeService.getAll(),
+          attendanceService.getDevices(),
+        ]);
+        setEmployees(empList);
+        setDevices(devList);
+        if (empList.length > 0) setSelectedEmployeeId(empList[0].employeeId);
+        if (devList.length > 0) setSelectedDeviceId(devList[0].deviceId);
       };
-      load();
+      loadInitial();
     }
   }, [isOpen]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSimulate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedEmp || !selectedDevice) return;
+    if (!selectedEmployeeId || !selectedDeviceId) return;
 
     try {
       setIsLoading(true);
-      const record = await attendanceService.simulateAttendancePunch({
-        employeeId: selectedEmp,
-        deviceId: selectedDevice,
-        action,
-        time: simulatedTime,
+      const record = await attendanceService.punchAttendance({
+        employeeId: selectedEmployeeId,
+        deviceId: selectedDeviceId,
+        type: punchType,
       });
 
       showToast(
         'success',
-        'Simulated Attendance Punch Processed',
-        `${record.employeeName} - ${action === 'CHECK_IN' ? 'Checked In' : 'Checked Out'} via ${record.deviceName} at ${record.checkIn || record.checkOut}`
+        `Attendance Punched: ${punchType === 'CHECK_IN' ? 'Check-In' : 'Check-Out'}`,
+        `${record.employeeName} marked at ${record.deviceName} (${record.checkIn || record.checkOut})`
       );
-      onSuccess();
+
+      onSuccess?.();
       onClose();
     } catch (err: any) {
-      showToast('error', 'Attendance Simulation Error', err.message || 'Failed to simulate attendance');
+      showToast('error', 'Simulation Failed', err.message || 'Could not record attendance');
     } finally {
       setIsLoading(false);
     }
   };
 
+  const selectedEmp = employees.find((e) => e.employeeId === selectedEmployeeId);
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Simulate Factory Attendance Punch"
-      subtitle="Software simulation of RFID Turnstile & Biometric Gate operations"
-      icon={<Radio className="w-5 h-5 text-blue-400" />}
+      title="Simulate Turnstile / Biometric Gate Punch"
+      subtitle="Virtual RFID and Biometric Gate Event Simulator"
       maxWidth="md"
+      icon={<Fingerprint className="w-5 h-5 text-blue-400" />}
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="p-3 bg-blue-950/40 border border-blue-800/40 rounded-lg text-xs text-blue-300 flex items-start gap-2">
-          <Radio className="w-4 h-4 mt-0.5 flex-shrink-0 text-blue-400" />
-          <span>
-            <strong>Simulation Note:</strong> This emulates the physical hardware RFID card tap or biometric scanner sending an event packet to the backend attendance API.
-          </span>
-        </div>
-
+      <form onSubmit={handleSimulate} className="space-y-4">
         <Select
-          label="Select Employee"
-          value={selectedEmp}
-          onChange={(e) => setSelectedEmp(e.target.value)}
+          label="Select Plant Worker / Employee"
+          value={selectedEmployeeId}
+          onChange={(e) => setSelectedEmployeeId(e.target.value)}
           options={employees.map((emp) => ({
+            label: `${emp.fullName || emp.firstName + ' ' + emp.lastName} (${emp.employeeId} - ${emp.departmentName})`,
             value: emp.employeeId,
-            label: `${emp.employeeId} - ${emp.fullName || emp.firstName + ' ' + emp.lastName} (${emp.departmentName})`,
           }))}
           required
         />
 
         <Select
-          label="Access Terminal / Gate"
-          value={selectedDevice}
-          onChange={(e) => setSelectedDevice(e.target.value)}
-          options={devices.map((d) => ({
-            value: d.deviceId,
-            label: `${d.deviceName} [${d.location}]`,
+          label="Access Gate / Attendance Device"
+          value={selectedDeviceId}
+          onChange={(e) => setSelectedDeviceId(e.target.value)}
+          options={devices.map((dev) => ({
+            label: `${dev.deviceName} [${dev.location}]`,
+            value: dev.deviceId,
           }))}
           required
         />
 
-        <div>
-          <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-2">
-            Action Type
-          </label>
+        <div className="space-y-1.5">
+          <label className="block text-xs font-medium text-slate-300">Punch Event Action</label>
           <div className="grid grid-cols-2 gap-3">
             <button
               type="button"
-              onClick={() => setAction('CHECK_IN')}
-              className={`p-3 rounded-lg border text-sm font-semibold flex items-center justify-center gap-2 transition-all ${
-                action === 'CHECK_IN'
-                  ? 'bg-emerald-600/20 border-emerald-500 text-emerald-300 ring-1 ring-emerald-500'
-                  : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200'
+              onClick={() => setPunchType('CHECK_IN')}
+              className={`flex items-center justify-center gap-2 p-3 rounded-xl border text-xs font-semibold transition-all ${
+                punchType === 'CHECK_IN'
+                  ? 'bg-blue-600/20 border-blue-500 text-blue-300 shadow-md shadow-blue-500/10'
+                  : 'bg-slate-900 border-slate-800 text-slate-400 hover:bg-slate-800'
               }`}
             >
-              <UserCheck className="w-4 h-4" /> Check In
+              <LogIn className="w-4 h-4" />
+              Check-In (Entry)
             </button>
             <button
               type="button"
-              onClick={() => setAction('CHECK_OUT')}
-              className={`p-3 rounded-lg border text-sm font-semibold flex items-center justify-center gap-2 transition-all ${
-                action === 'CHECK_OUT'
-                  ? 'bg-blue-600/20 border-blue-500 text-blue-300 ring-1 ring-blue-500'
-                  : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200'
+              onClick={() => setPunchType('CHECK_OUT')}
+              className={`flex items-center justify-center gap-2 p-3 rounded-xl border text-xs font-semibold transition-all ${
+                punchType === 'CHECK_OUT'
+                  ? 'bg-amber-600/20 border-amber-500 text-amber-300 shadow-md shadow-amber-500/10'
+                  : 'bg-slate-900 border-slate-800 text-slate-400 hover:bg-slate-800'
               }`}
             >
-              <Clock className="w-4 h-4" /> Check Out
+              <LogOut className="w-4 h-4" />
+              Check-Out (Exit)
             </button>
           </div>
         </div>
 
-        <Input
-          label="Timestamp (Simulated)"
-          value={simulatedTime}
-          onChange={(e) => setSimulatedTime(e.target.value)}
-          leftIcon={<Clock className="w-4 h-4 text-slate-400" />}
-          required
-        />
+        {selectedEmp && (
+          <div className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 text-xs space-y-1 text-slate-400">
+            <div className="flex justify-between">
+              <span>Department:</span>
+              <span className="font-semibold text-slate-200">{selectedEmp.departmentName}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Role / Position:</span>
+              <span className="font-semibold text-slate-200">{selectedEmp.position || 'Plant Technician'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Current Status:</span>
+              <span className="text-emerald-400 font-mono font-semibold">{selectedEmp.status}</span>
+            </div>
+          </div>
+        )}
 
         <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
-          <Button variant="secondary" onClick={onClose} type="button">
+          <Button variant="secondary" onClick={onClose} type="button" disabled={isLoading}>
             Cancel
           </Button>
-          <Button variant="primary" type="submit" isLoading={isLoading} leftIcon={<Radio className="w-4 h-4" />}>
-            Transmit Simulated Punch
+          <Button
+            variant="primary"
+            type="submit"
+            isLoading={isLoading}
+            leftIcon={<CheckCircle2 className="w-4 h-4" />}
+          >
+            Trigger Punch Event
           </Button>
         </div>
       </form>

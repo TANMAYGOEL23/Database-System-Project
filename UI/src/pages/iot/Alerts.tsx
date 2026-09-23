@@ -1,19 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { BellRing, AlertTriangle, CheckCircle2, ShieldAlert, Check, RefreshCw } from 'lucide-react';
+import { AlertOctagon, CheckCircle2, ShieldAlert, Eye, RefreshCw } from 'lucide-react';
 import { DataTable, Column, FilterConfig } from '../../components/tables/DataTable';
-import { Button } from '../../components/ui/Button';
 import { StatusBadge } from '../../components/ui/StatusBadge';
+import { Button } from '../../components/ui/Button';
 import { useNotification } from '../../context/NotificationContext';
-import { useAuth } from '../../context/AuthContext';
 import { alertService } from '../../services/alertService';
-import { Alert } from '../../types/iot';
-import { formatDateTime } from '../../utils/formatters';
+import { Alert, AlertStatus, AlertSeverity } from '../../types/iot';
+import { formatDate } from '../../utils/formatters';
 
 export const Alerts: React.FC = () => {
-  const { user } = useAuth();
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
   const { showToast } = useNotification();
 
   const loadData = async () => {
@@ -32,54 +29,67 @@ export const Alerts: React.FC = () => {
     loadData();
   }, []);
 
-  const handleAcknowledge = async (alert: Alert) => {
+  const handleAcknowledge = async (alertId: string) => {
     try {
-      await alertService.acknowledgeAlert(alert.alertId, user?.fullName || 'Shift Operator');
-      showToast('info', 'Alert Acknowledged', `Incident ${alert.alertId} acknowledged by ${user?.fullName || 'Operator'}`);
+      await alertService.acknowledgeAlert(alertId, 'Safety Engineer');
+      showToast('success', 'Incident Acknowledged', `Alert ${alertId} assigned for response.`);
       loadData();
-    } catch (err: any) {
-      showToast('error', 'Action Failed', err.message);
+    } catch (e: any) {
+      showToast('error', 'Acknowledge Failed', e.message);
     }
   };
 
-  const handleResolve = async (alert: Alert) => {
+  const handleResolve = async (alertId: string) => {
     try {
-      await alertService.resolveAlert(alert.alertId);
-      showToast('success', 'Alert Resolved', `Incident ${alert.alertId} cleared and marked resolved.`);
+      await alertService.resolveAlert(alertId);
+      showToast('success', 'Incident Resolved', `Alert ${alertId} marked as safe & resolved.`);
       loadData();
-    } catch (err: any) {
-      showToast('error', 'Action Failed', err.message);
+    } catch (e: any) {
+      showToast('error', 'Resolve Failed', e.message);
+    }
+  };
+
+  const getSeverityBadge = (sev: AlertSeverity) => {
+    switch (sev) {
+      case 'CRITICAL':
+        return (
+          <span className="px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-rose-950 text-rose-300 border border-rose-800 animate-pulse">
+            CRITICAL
+          </span>
+        );
+      case 'HIGH':
+        return (
+          <span className="px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-amber-950 text-amber-300 border border-amber-800">
+            HIGH RISK
+          </span>
+        );
+      default:
+        return (
+          <span className="px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-blue-950 text-blue-300 border border-blue-800">
+            {sev}
+          </span>
+        );
     }
   };
 
   const columns: Column<Alert>[] = [
     {
       key: 'alertId',
-      header: 'Alert ID',
+      header: 'Incident Code',
       sortable: true,
-      render: (a) => <span className="font-mono font-semibold text-rose-400">{a.alertId}</span>,
+      render: (a) => <span className="font-mono text-xs font-semibold text-rose-400">{a.alertId}</span>,
     },
     {
-      key: 'alertType',
-      header: 'Incident Event / Trigger',
+      key: 'message',
+      header: 'Alert Details & Sensor Node',
       sortable: true,
       render: (a) => (
         <div>
-          <div className={`font-semibold ${a.status === 'ACTIVE' ? 'text-rose-200' : 'text-slate-200'}`}>
-            {a.alertType}
+          <div className="font-semibold text-slate-100 flex items-center gap-1.5">
+            <AlertOctagon className="w-3.5 h-3.5 text-rose-400" />
+            {a.message}
           </div>
-          <div className="text-[11px] text-slate-400 mt-0.5 max-w-md leading-relaxed">{a.message}</div>
-        </div>
-      ),
-    },
-    {
-      key: 'sensorName',
-      header: 'Originating Sensor & Zone',
-      sortable: true,
-      render: (a) => (
-        <div>
-          <div className="text-slate-200 font-medium text-xs">{a.sensorName}</div>
-          <div className="text-[10px] text-slate-400 font-mono">📍 {a.location}</div>
+          <div className="text-[11px] font-mono text-slate-400">Node: {a.sensorName} • {a.location}</div>
         </div>
       ),
     },
@@ -87,35 +97,23 @@ export const Alerts: React.FC = () => {
       key: 'severity',
       header: 'Severity',
       sortable: true,
-      render: (a) => (
-        <span
-          className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase ${
-            a.severity === 'CRITICAL'
-              ? 'bg-rose-500/25 text-rose-300 ring-1 ring-rose-500/50'
-              : a.severity === 'HIGH'
-              ? 'bg-amber-500/25 text-amber-300 ring-1 ring-amber-500/50'
-              : 'bg-blue-500/25 text-blue-300'
-          }`}
-        >
-          {a.severity}
-        </span>
-      ),
+      render: (a) => getSeverityBadge(a.severity),
     },
     {
       key: 'time',
-      header: 'Trigger Timestamp',
+      header: 'Trigger Time',
       sortable: true,
-      render: (a) => <span className="font-mono text-xs text-slate-400">{formatDateTime(a.time)}</span>,
+      render: (a) => <span className="font-mono text-xs text-slate-400">{formatDate(a.time)}</span>,
     },
     {
       key: 'status',
-      header: 'Status',
+      header: 'Incident State',
       sortable: true,
       render: (a) => <StatusBadge status={a.status} />,
     },
     {
       key: 'actions',
-      header: 'Actions',
+      header: 'Response Actions',
       align: 'right',
       render: (a) => (
         <div className="flex items-center justify-end gap-1.5">
@@ -123,27 +121,21 @@ export const Alerts: React.FC = () => {
             <Button
               variant="secondary"
               size="sm"
-              onClick={() => handleAcknowledge(a)}
-              className="text-xs"
+              onClick={() => handleAcknowledge(a.alertId)}
+              leftIcon={<Eye className="w-3.5 h-3.5" />}
             >
-              Acknowledge
+              Ack
             </Button>
           )}
           {a.status !== 'RESOLVED' && (
             <Button
-              variant="emerald"
+              variant="primary"
               size="sm"
-              onClick={() => handleResolve(a)}
-              leftIcon={<Check className="w-3.5 h-3.5" />}
-              className="text-xs"
+              onClick={() => handleResolve(a.alertId)}
+              leftIcon={<CheckCircle2 className="w-3.5 h-3.5" />}
             >
               Resolve
             </Button>
-          )}
-          {a.status === 'RESOLVED' && (
-            <span className="text-xs text-emerald-400 flex items-center gap-1 font-mono">
-              <CheckCircle2 className="w-3.5 h-3.5" /> Resolved
-            </span>
           )}
         </div>
       ),
@@ -153,11 +145,11 @@ export const Alerts: React.FC = () => {
   const filters: FilterConfig[] = [
     {
       key: 'status',
-      label: 'Incident Status',
+      label: 'Incident State',
       options: [
-        { label: 'Active Unresolved', value: 'ACTIVE' },
+        { label: 'Active Alarm', value: 'ACTIVE' },
         { label: 'Acknowledged', value: 'ACKNOWLEDGED' },
-        { label: 'Resolved Closed', value: 'RESOLVED' },
+        { label: 'Resolved', value: 'RESOLVED' },
       ],
     },
     {
@@ -165,7 +157,7 @@ export const Alerts: React.FC = () => {
       label: 'Severity Level',
       options: [
         { label: 'Critical', value: 'CRITICAL' },
-        { label: 'High', value: 'HIGH' },
+        { label: 'High Risk', value: 'HIGH' },
         { label: 'Medium', value: 'MEDIUM' },
         { label: 'Low', value: 'LOW' },
       ],
@@ -176,18 +168,18 @@ export const Alerts: React.FC = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-white tracking-tight">Plant Incidents & Safety Alerts</h2>
+          <h2 className="text-2xl font-bold text-white tracking-tight">Factory Safety & Telemetry Incidents</h2>
           <p className="text-xs text-slate-400 mt-1">
-            Real-time critical alarm feeds generated automatically by PostgreSQL database event triggers.
+            Threshold breaches, temperature overshoots, and environmental emergency alarms.
           </p>
         </div>
 
         <Button
-          variant="outline"
+          variant="secondary"
           onClick={loadData}
-          leftIcon={<RefreshCw className="w-4 h-4" />}
+          leftIcon={<RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />}
         >
-          Refresh Feed
+          Refresh Alarms
         </Button>
       </div>
 
@@ -195,8 +187,8 @@ export const Alerts: React.FC = () => {
         data={alerts}
         columns={columns}
         rowKey={(a) => a.alertId}
-        searchKey={(a) => `${a.alertId} ${a.alertType} ${a.sensorName} ${a.location}`}
-        searchPlaceholder="Search alerts by incident ID, sensor, zone..."
+        searchKey={(a) => `${a.alertId} ${a.message} ${a.sensorName} ${a.location}`}
+        searchPlaceholder="Filter alarms by incident code, location, or message..."
         filters={filters}
         isLoading={isLoading}
       />

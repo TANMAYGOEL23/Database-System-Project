@@ -1,94 +1,133 @@
-import { apiClient, simulateLatency } from './api';
+import { delay } from './api';
+import { supabase, isSupabaseConfigured } from './supabase';
+import { mockStorage } from './mockStorage';
 import { AttendanceRecord, AttendanceDevice } from '../types/hr';
-import { mockDb } from './mockStorage';
+
+function mapAttendanceFromDb(row: any): AttendanceRecord {
+  return {
+    attendanceId: row.attendance_id || row.attendanceId,
+    employeeId: row.employee_id || row.employeeId,
+    employeeName: row.employee_name || row.employeeName,
+    departmentName: row.department_name || row.departmentName,
+    date: row.date,
+    checkIn: row.check_in || row.checkIn,
+    checkOut: row.check_out || row.checkOut,
+    deviceId: row.device_id || row.deviceId,
+    deviceName: row.device_name || row.deviceName,
+    status: row.status,
+    workHours: parseFloat(row.work_hours || row.workHours || 8.0),
+  };
+}
+
+function mapDeviceFromDb(row: any): AttendanceDevice {
+  return {
+    deviceId: row.device_id || row.deviceId,
+    deviceName: row.device_name || row.deviceName,
+    location: row.location,
+    deviceType: row.device_type || row.deviceType,
+    status: row.status,
+    lastPing: row.last_ping || row.lastPing || 'Online',
+  };
+}
 
 export const attendanceService = {
-  async getAllRecords(): Promise<AttendanceRecord[]> {
-    try {
-      const response = await apiClient.get<AttendanceRecord[]>('/attendance');
-      return response.data;
-    } catch {
-      await simulateLatency(200);
-      return mockDb.getAttendanceRecords();
+  async getAll(): Promise<AttendanceRecord[]> {
+    if (isSupabaseConfigured()) {
+      const { data, error } = await supabase.from('attendance').select('*').order('date', { ascending: false });
+      if (error) throw new Error(error.message);
+      return (data || []).map(mapAttendanceFromDb);
     }
+
+    await delay(200);
+    return mockStorage.attendance;
   },
 
   async getDevices(): Promise<AttendanceDevice[]> {
-    try {
-      const response = await apiClient.get<AttendanceDevice[]>('/attendance/devices');
-      return response.data;
-    } catch {
-      await simulateLatency(150);
-      return mockDb.getAttendanceDevices();
+    if (isSupabaseConfigured()) {
+      const { data, error } = await supabase.from('attendance_devices').select('*');
+      if (error) throw new Error(error.message);
+      return (data || []).map(mapDeviceFromDb);
     }
+
+    await delay(150);
+    return mockStorage.attendanceDevices;
   },
 
-  async getByEmployeeId(employeeId: string): Promise<AttendanceRecord[]> {
-    try {
-      const response = await apiClient.get<AttendanceRecord[]>(`/attendance/employee/${employeeId}`);
-      return response.data;
-    } catch {
-      await simulateLatency(150);
-      const records = mockDb.getAttendanceRecords();
-      return records.filter((r) => r.employeeId === employeeId);
-    }
-  },
-
-  async simulateAttendancePunch(data: {
+  async punchAttendance(payload: {
     employeeId: string;
     deviceId: string;
-    action: 'CHECK_IN' | 'CHECK_OUT';
-    time?: string;
-    date?: string;
+    type: 'CHECK_IN' | 'CHECK_OUT';
+    timestamp?: string;
   }): Promise<AttendanceRecord> {
-    try {
-      const response = await apiClient.post<AttendanceRecord>('/attendance/simulate', data);
-      return response.data;
-    } catch {
-      await simulateLatency(300);
-      const employees = mockDb.getEmployees();
-      const devices = mockDb.getAttendanceDevices();
-      const records = mockDb.getAttendanceRecords();
+    const today = new Date().toISOString().split('T')[0];
+    const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-      const emp = employees.find((e) => e.employeeId === data.employeeId);
-      const dev = devices.find((d) => d.deviceId === data.deviceId);
+    if (isSupabaseConfigured()) {
+      // Fetch employee & device info
+      const { data: emp } = await supabase.from('employees').select('*').eq('employee_id', payload.employeeId).single();
+      const { data: dev } = await supabase.from('attendance_devices').select('*').eq('device_id', payload.deviceId).single();
 
-      if (!emp) throw new Error('Employee not found');
-      const timeStr = data.time || new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-      const dateStr = data.date || new Date().toISOString().split('T')[0];
-
-      // Check if record exists for today
-      const existingIdx = records.findIndex(
-        (r) => r.employeeId === data.employeeId && r.date === dateStr
-      );
-
-      if (existingIdx !== -1 && data.action === 'CHECK_OUT') {
-        const updated: AttendanceRecord = {
-          ...records[existingIdx],
-          checkOut: timeStr,
-          deviceId: data.deviceId,
-          deviceName: dev ? dev.deviceName : 'Simulated Gate',
-          workHours: 8.0,
-        };
-        records[existingIdx] = updated;
-        mockDb.setAttendanceRecords(records);
-        return updated;
-      } else {
-        const newRecord: AttendanceRecord = {
-          attendanceId: `ATT${String(records.length + 1).padStart(3, '0')}`,
-          employeeId: emp.employeeId,
-          employeeName: emp.fullName || `${emp.firstName} ${emp.lastName}`,
-          departmentName: emp.departmentName || 'Operations',
-          date: dateStr,
-          checkIn: timeStr,
-          deviceId: data.deviceId,
-          deviceName: dev ? dev.deviceName : 'Simulated RFID Gate',
-          status: 'PRESENT',
-          workHours: 1.0,
-        };
-        mockDb.setAttendanceRecords([newRecord, ...records]);
-        return newRecord;
+      if (payload.type === 'CHECK_OUT') {
+        const { data: existing } = await supabase.from('attendance').select('*').eq('employee_id', payload.employeeId).eq('date', today).single();
+        if (existing) {
+          const { data: updated, error } = await supabase
+            .from('attendance')
+            .update({ check_out: nowTime, work_hours: 8.5 })
+            .eq('attendance_id', existing.attendance_id)
+            .select()
+            .single();
+          if (error) throw new Error(error.message);
+          return mapAttendanceFromDb(updated);
+        }
       }
+
+      const insertPayload = {
+        employee_id: payload.employeeId,
+        employee_name: emp ? `${emp.first_name} ${emp.last_name}` : 'Staff Member',
+        department_name: emp?.department_name || 'Plant Operations',
+        date: today,
+        check_in: nowTime,
+        device_id: payload.deviceId,
+        device_name: dev?.device_name || 'Gate Scanner',
+        status: 'PRESENT',
+        work_hours: 8.0,
+      };
+
+      const { data: created, error } = await supabase.from('attendance').insert([insertPayload]).select().single();
+      if (error) throw new Error(error.message);
+      return mapAttendanceFromDb(created);
     }
+
+    await delay(300);
+    const employee = mockStorage.employees.find((e) => e.employeeId === payload.employeeId);
+    const device = mockStorage.attendanceDevices.find((d) => d.deviceId === payload.deviceId);
+
+    const records = mockStorage.attendance;
+    const existingIdx = records.findIndex(
+      (r) => r.employeeId === payload.employeeId && r.date === today
+    );
+
+    if (payload.type === 'CHECK_OUT' && existingIdx !== -1) {
+      records[existingIdx].checkOut = nowTime;
+      records[existingIdx].workHours = 8.5;
+      mockStorage.attendance = records;
+      return records[existingIdx];
+    }
+
+    const newRecord: AttendanceRecord = {
+      attendanceId: `ATT${Math.floor(1000 + Math.random() * 9000)}`,
+      employeeId: payload.employeeId,
+      employeeName: employee ? `${employee.firstName} ${employee.lastName}` : 'Plant Worker',
+      departmentName: employee?.departmentName || 'Operations',
+      date: today,
+      checkIn: nowTime,
+      deviceId: payload.deviceId,
+      deviceName: device ? device.deviceName : 'Gate Turnstile',
+      status: 'PRESENT',
+      workHours: 8.0,
+    };
+
+    mockStorage.attendance = [newRecord, ...records];
+    return newRecord;
   },
 };

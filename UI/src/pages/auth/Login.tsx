@@ -1,175 +1,149 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Factory, Shield, User, Lock, AlertCircle, ArrowRight, CheckCircle2, Cpu } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useNotification } from '../../context/NotificationContext';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
+import { Factory, Lock, User, Shield, HardHat, Cpu } from 'lucide-react';
 
 export const Login: React.FC = () => {
   const [username, setUsername] = useState('admin');
   const [password, setPassword] = useState('password123');
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { login } = useAuth();
+  const { showToast } = useNotification();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const searchParams = new URLSearchParams(location.search);
-  const isExpired = searchParams.get('expired') === 'true';
+  const from = (location.state as any)?.from?.pathname || '/dashboard';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-
-    if (!username.trim()) {
-      setError('Please enter your username');
+    if (!username.trim() || !password.trim()) {
+      showToast('error', 'Validation Error', 'Please enter username and password');
       return;
     }
 
     try {
-      setIsLoading(true);
-      await login({ username, password });
-      navigate('/dashboard');
+      setIsSubmitting(true);
+      const success = await login({ username, password });
+      if (success) {
+        showToast('success', 'Security Authorized', `Logged in as ${username.toUpperCase()}`);
+        navigate(from, { replace: true });
+      } else {
+        showToast('error', 'Authentication Failed', 'Invalid credentials or user not active');
+      }
     } catch (err: any) {
-      setError(err.message || 'Invalid username or password credentials.');
+      showToast('error', 'Login Error', err.message || 'Server connection error');
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
-  const handleQuickLogin = async (userType: 'admin' | 'employee') => {
-    setError(null);
-    const targetUser = userType === 'admin' ? 'admin' : 'operator';
-    setUsername(targetUser);
-    setPassword('password123');
-
-    try {
-      setIsLoading(true);
-      await login({ username: targetUser, password: 'password123' });
-      navigate('/dashboard');
-    } catch (err: any) {
-      setError(err.message || 'Authentication error.');
-    } finally {
-      setIsLoading(false);
+  const handleDemoSelect = (role: 'admin' | 'operator') => {
+    if (role === 'admin') {
+      setUsername('admin');
+      setPassword('password123');
+    } else {
+      setUsername('operator');
+      setPassword('password123');
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8 industrial-grid-bg relative overflow-hidden">
-      {/* Glow Effects */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-10 right-10 w-72 h-72 bg-cyan-600/10 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen w-screen bg-slate-950 flex flex-col justify-center items-center p-4 relative overflow-hidden">
+      {/* Background industrial circuit grid overlay */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b15_1px,transparent_1px),linear-gradient(to_bottom,#1e293b15_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] pointer-events-none" />
 
-      <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10">
-        {/* Factory Brand Header */}
-        <div className="flex justify-center">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-500 flex items-center justify-center shadow-xl shadow-blue-600/30 ring-1 ring-blue-400/40">
-            <Factory className="w-8 h-8 text-white" />
+      <div className="w-full max-w-md relative z-10 space-y-6">
+        {/* Brand Header */}
+        <div className="text-center space-y-2">
+          <div className="inline-flex p-3 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white shadow-xl shadow-blue-500/25 ring-1 ring-blue-400/30">
+            <Factory className="w-8 h-8" />
           </div>
+          <h1 className="text-2xl font-bold tracking-tight text-white">
+            Smart Industrial <span className="text-blue-400">ERP</span>
+          </h1>
+          <p className="text-xs text-slate-400">
+            PostgreSQL & Supabase Connected University Database Management System
+          </p>
         </div>
-        <h2 className="mt-4 text-center text-2xl font-extrabold tracking-tight text-white sm:text-3xl">
-          SMART INDUSTRIAL ERP
-        </h2>
-        <p className="mt-1 text-center text-xs font-mono uppercase tracking-widest text-blue-400">
-          Relational Database & Factory Automation Suite
-        </p>
-      </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10 px-4 sm:px-0">
-        <div className="bg-slate-900/90 border border-slate-800 py-8 px-6 shadow-2xl rounded-2xl sm:px-10 backdrop-blur-xl">
-          {isExpired && (
-            <div className="mb-4 p-3 rounded-lg bg-amber-950/50 border border-amber-600/50 text-amber-200 text-xs flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0" />
-              <span>Your session token has expired. Please sign in again.</span>
-            </div>
-          )}
-
-          {error && (
-            <div className="mb-4 p-3.5 rounded-lg bg-rose-950/60 border border-rose-600/50 text-rose-200 text-xs flex items-start gap-2.5">
-              <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          <form className="space-y-4" onSubmit={handleSubmit}>
+        {/* Login Form Container */}
+        <div className="bg-slate-900/90 border border-slate-800 backdrop-blur-xl rounded-2xl p-6 shadow-2xl shadow-black/50 space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <Input
-              label="Username"
-              type="text"
+              label="Operator Username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="e.g. admin or operator"
-              leftIcon={<User className="w-4 h-4 text-slate-400" />}
+              leftIcon={<User className="w-4 h-4" />}
               required
             />
 
             <Input
-              label="Password"
+              label="Security Access Key / Password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••••••"
-              leftIcon={<Lock className="w-4 h-4 text-slate-400" />}
+              leftIcon={<Lock className="w-4 h-4" />}
               required
             />
 
-            <div className="flex items-center justify-between text-xs pt-1">
-              <label className="flex items-center gap-2 text-slate-400 cursor-pointer">
-                <input
-                  type="checkbox"
-                  defaultChecked
-                  className="rounded bg-slate-800 border-slate-700 text-blue-600 focus:ring-blue-500"
-                />
-                Remember workstation
-              </label>
-              <span className="text-slate-500 font-mono text-[11px]">JWT Auth Ready</span>
-            </div>
-
             <Button
-              type="submit"
               variant="primary"
               size="lg"
+              type="submit"
               className="w-full mt-2"
-              isLoading={isLoading}
-              rightIcon={<ArrowRight className="w-4 h-4" />}
+              isLoading={isSubmitting}
             >
-              Sign In to ERP Portal
+              Sign In to Industrial Workspace
             </Button>
           </form>
 
-          {/* Quick Demo Role Switchers */}
-          <div className="mt-6 pt-6 border-t border-slate-800">
-            <p className="text-center text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-3">
-              One-Click Role Demonstration
+          {/* 1-Click Role Switcher Demo Presets */}
+          <div className="pt-4 border-t border-slate-800 space-y-2.5">
+            <p className="text-[11px] text-center font-mono font-medium text-slate-400 uppercase tracking-wider">
+              1-Click Demo Security Roles
             </p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2.5">
               <button
                 type="button"
-                onClick={() => handleQuickLogin('admin')}
-                className="flex flex-col items-center p-3 rounded-xl border border-slate-700 bg-slate-800/60 hover:bg-slate-800 hover:border-blue-500/50 transition-all text-left group"
+                onClick={() => handleDemoSelect('admin')}
+                className={`flex items-center justify-center gap-2 p-2.5 rounded-xl border text-xs font-semibold transition-all ${
+                  username === 'admin'
+                    ? 'bg-blue-600/20 border-blue-500/60 text-blue-300'
+                    : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                }`}
               >
-                <Shield className="w-5 h-5 text-amber-400 mb-1.5 group-hover:scale-110 transition-transform" />
-                <span className="text-xs font-bold text-slate-200">Admin Mode</span>
-                <span className="text-[10px] text-slate-400">Full ERP Access</span>
+                <Shield className="w-4 h-4 text-blue-400" />
+                <span>ADMIN (Full ERP)</span>
               </button>
 
               <button
                 type="button"
-                onClick={() => handleQuickLogin('employee')}
-                className="flex flex-col items-center p-3 rounded-xl border border-slate-700 bg-slate-800/60 hover:bg-slate-800 hover:border-blue-500/50 transition-all text-left group"
+                onClick={() => handleDemoSelect('operator')}
+                className={`flex items-center justify-center gap-2 p-2.5 rounded-xl border text-xs font-semibold transition-all ${
+                  username === 'operator'
+                    ? 'bg-emerald-600/20 border-emerald-500/60 text-emerald-300'
+                    : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                }`}
               >
-                <Cpu className="w-5 h-5 text-blue-400 mb-1.5 group-hover:scale-110 transition-transform" />
-                <span className="text-xs font-bold text-slate-200">Employee Mode</span>
-                <span className="text-[10px] text-slate-400">Restricted Tasks</span>
+                <HardHat className="w-4 h-4 text-emerald-400" />
+                <span>EMPLOYEE (Floor)</span>
               </button>
             </div>
           </div>
+        </div>
 
-          <div className="mt-5 text-center">
-            <p className="text-[11px] text-slate-400 font-mono">
-              Database Systems Project • Spring Boot & PostgreSQL
-            </p>
-          </div>
+        {/* Footer Database Notice */}
+        <div className="text-center space-y-1">
+          <p className="text-[11px] text-slate-500 font-mono flex items-center justify-center gap-1.5">
+            <Cpu className="w-3.5 h-3.5 text-blue-400" />
+            PostgreSQL Relational Schema v2.4 • Supabase Ready
+          </p>
         </div>
       </div>
     </div>
