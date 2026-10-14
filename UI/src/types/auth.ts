@@ -33,6 +33,8 @@ export interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (credentials: LoginRequest) => Promise<boolean>;
+  loginWithGoogle: () => Promise<void>;
+  completeOAuthLogin: () => Promise<User>;
   logout: () => void;
   isAdmin: boolean;
   isEmployee: boolean;

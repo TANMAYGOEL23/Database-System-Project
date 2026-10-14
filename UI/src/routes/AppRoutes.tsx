@@ -5,6 +5,7 @@ import { MainLayout } from '../components/layout/MainLayout';
 
 // Auth Pages
 import { Login } from '../pages/auth/Login';
+import { AuthCallback } from '../pages/auth/AuthCallback';
 import { Unauthorized } from '../pages/auth/Unauthorized';
 import { NotFound } from '../pages/auth/NotFound';
 
@@ -57,6 +58,7 @@ export const AppRoutes: React.FC = () => {
     <Routes>
       {/* Public Routes */}
       <Route path="/login" element={<Login />} />
+      <Route path="/auth/callback" element={<AuthCallback />} />
       <Route path="/unauthorized" element={<Unauthorized />} />
 
       {/* Authenticated Application Shell */}

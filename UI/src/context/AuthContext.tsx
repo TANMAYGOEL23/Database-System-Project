@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import { User, LoginRequest, AuthContextType } from '../types/auth';
 import { authService } from '../services/authService';
 
@@ -29,6 +29,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const loginWithGoogle = async (): Promise<void> => {
+    // Redirects away from the app; the session is completed on /auth/callback
+    await authService.signInWithGoogle();
+  };
+
+  const completeOAuthLogin = async (): Promise<User> => {
+    try {
+      setIsLoading(true);
+      const res = await authService.completeOAuthLogin();
+      setUser(res.user);
+      setToken(res.token);
+      localStorage.setItem('smart_erp_token', res.token);
+      localStorage.setItem('smart_erp_user', JSON.stringify(res.user));
+      return res.user;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const logout = () => {
     authService.logout();
     setUser(null);
@@ -48,6 +67,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAuthenticated: !!user && !!token,
         isLoading,
         login,
+        loginWithGoogle,
+        completeOAuthLogin,
         logout,
         isAdmin,
         isEmployee,

@@ -16,5 +16,13 @@ export const isSupabaseConfigured = (): boolean => {
 
 export const supabase = createClient(
   isSupabaseConfigured() ? supabaseUrl : 'https://placeholder-url.supabase.co',
-  isSupabaseConfigured() ? supabaseAnonKey : 'placeholder-anon-key'
+  isSupabaseConfigured() ? supabaseAnonKey : 'placeholder-anon-key',
+  {
+    auth: {
+      flowType: 'pkce',
+      detectSessionInUrl: true,
+      persistSession: true,
+      autoRefreshToken: true,
+    },
+  }
 );
