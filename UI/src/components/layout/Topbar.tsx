@@ -14,9 +14,11 @@ import {
   AlertTriangle,
   X,
   ExternalLink,
+  Database,
 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { mockStorage } from '../../services/mockStorage';
+import { isSupabaseConfigured } from '../../services/supabase';
 import { Alert } from '../../types/iot';
 import { SimulateAttendanceModal } from '../simulation/SimulateAttendanceModal';
 import { SimulateSensorModal } from '../simulation/SimulateSensorModal';
@@ -59,7 +61,7 @@ export const Topbar: React.FC<{
   const activeAlertsCount = alerts.filter((a) => a.status === 'ACTIVE').length;
 
   return (
-    <header className="h-16 border-b border-slate-800 bg-slate-950/80 backdrop-blur-md sticky top-0 z-20 px-4 sm:px-6 flex items-center justify-between gap-4 select-none">
+    <header className="h-16 border-b border-slate-800 bg-white/90 backdrop-blur-md sticky top-0 z-20 px-4 sm:px-6 flex items-center justify-between gap-4 select-none shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
       {/* Left Section: Mobile Menu & Live Clock */}
       <div className="flex items-center gap-3">
         <button
@@ -70,29 +72,42 @@ export const Topbar: React.FC<{
         </button>
 
         {/* Real-Time Plant Floor Master Clock */}
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 font-mono text-xs text-slate-300 shadow-inner">
-          <Clock className="w-3.5 h-3.5 text-blue-400 animate-pulse" />
-          <span>PLANT UTC+0:</span>
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 font-mono text-xs text-slate-300 shadow-xs">
+          <Clock className="w-3.5 h-3.5 text-blue-600 animate-pulse" />
+          <span className="text-slate-400">PLANT UTC+0:</span>
           <span className="font-bold text-slate-100">{time || '08:00:00 AM'}</span>
         </div>
 
         {/* Active Shift Indicator */}
-        <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[11px] font-mono text-emerald-400 font-medium">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+        <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-[11px] font-mono text-emerald-700 font-medium shadow-xs">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
           SHIFT A (DAY RUN)
         </div>
+
+        {/* Live Supabase Connection Badge */}
+        {isSupabaseConfigured() ? (
+          <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-[11px] font-mono text-blue-700 font-medium shadow-xs" title="Live PostgreSQL Queries to Supabase">
+            <Database className="w-3.5 h-3.5 text-blue-600" />
+            <span>SUPABASE LIVE</span>
+          </div>
+        ) : (
+          <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-[11px] font-mono text-amber-800 font-medium shadow-xs" title="Fallback Mock Relational Engine Active">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+            <span>MOCK DB</span>
+          </div>
+        )}
       </div>
 
       {/* Right Section: Hardware Simulation Triggers & Notifications */}
       <div className="flex items-center gap-2 sm:gap-3">
         {/* Simulation Shortcut Buttons (Prominent in topbar) */}
-        <div className="flex items-center gap-1.5 bg-slate-900/90 border border-slate-800 p-1 rounded-xl">
+        <div className="flex items-center gap-1.5 bg-slate-950 border border-slate-800 p-1 rounded-xl shadow-xs">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setIsAttendanceModalOpen(true)}
-            leftIcon={<Fingerprint className="w-3.5 h-3.5 text-blue-400" />}
-            className="text-xs px-2.5 py-1 text-slate-300 hover:text-white"
+            leftIcon={<Fingerprint className="w-3.5 h-3.5 text-blue-600" />}
+            className="text-xs px-2.5 py-1 text-slate-400 hover:text-slate-100 hover:bg-white"
             title="Simulate Employee Turnstile / RFID Punch"
           >
             <span className="hidden md:inline">Simulate Attendance</span>
@@ -102,8 +117,8 @@ export const Topbar: React.FC<{
             variant="ghost"
             size="sm"
             onClick={() => setIsSensorModalOpen(true)}
-            leftIcon={<Activity className="w-3.5 h-3.5 text-cyan-400" />}
-            className="text-xs px-2.5 py-1 text-slate-300 hover:text-white"
+            leftIcon={<Activity className="w-3.5 h-3.5 text-cyan-600" />}
+            className="text-xs px-2.5 py-1 text-slate-400 hover:text-slate-100 hover:bg-white"
             title="Inject Sensor Reading Packet"
           >
             <span className="hidden md:inline">Simulate Sensor</span>
@@ -113,8 +128,8 @@ export const Topbar: React.FC<{
             variant="ghost"
             size="sm"
             onClick={() => setIsRobotModalOpen(true)}
-            leftIcon={<Bot className="w-3.5 h-3.5 text-indigo-400" />}
-            className="text-xs px-2.5 py-1 text-slate-300 hover:text-white"
+            leftIcon={<Bot className="w-3.5 h-3.5 text-indigo-600" />}
+            className="text-xs px-2.5 py-1 text-slate-400 hover:text-slate-100 hover:bg-white"
             title="Dispatch AMR / AGV Warehouse Mission"
           >
             <span className="hidden md:inline">Dispatch AGV</span>
@@ -125,7 +140,7 @@ export const Topbar: React.FC<{
         <div className="relative">
           <button
             onClick={() => setIsAlertsOpen(!isAlertsOpen)}
-            className="relative p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-100 hover:border-slate-700 transition-colors"
+            className="relative p-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-400 hover:text-slate-100 hover:border-slate-700 shadow-xs transition-colors"
           >
             <Bell className="w-4 h-4" />
             {activeAlertsCount > 0 && (

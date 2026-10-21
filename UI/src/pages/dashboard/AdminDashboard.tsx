@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  DollarSign,
+  IndianRupee,
   TrendingUp,
   Factory,
   Cpu,
@@ -100,7 +100,7 @@ export const AdminDashboard: React.FC = () => {
         <StatCard
           title="Monthly Revenue"
           value={formatCurrency(740000)}
-          icon={<DollarSign className="w-5 h-5 text-emerald-400" />}
+          icon={<IndianRupee className="w-5 h-5 text-emerald-400" />}
           trend={{ value: 9.6, isPositive: true, label: 'vs last mo' }}
           badge="General Ledger"
           badgeColor="emerald"
@@ -168,11 +168,11 @@ export const AdminDashboard: React.FC = () => {
                     <stop offset="95%" stopColor="#f43f5e" stopOpacity={0.0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                <XAxis dataKey="month" stroke="#64748b" fontSize={11} />
-                <YAxis stroke="#64748b" fontSize={11} tickFormatter={(val) => `$${val / 1000}k`} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#e8e4dc" />
+                <XAxis dataKey="month" stroke="#78716c" fontSize={11} />
+                <YAxis stroke="#78716c" fontSize={11} tickFormatter={(val) => `₹${val / 1000}k`} />
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px', fontSize: '12px' }}
+                  contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e8e4dc', color: '#14120e', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', fontSize: '12px' }}
                   formatter={(val: any) => [formatCurrency(val), '']}
                 />
                 <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
@@ -184,7 +184,7 @@ export const AdminDashboard: React.FC = () => {
         </div>
 
         {/* Inventory Category Breakdown Donut */}
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-xl space-y-4">
+        <div className="rounded-2xl border border-slate-800 bg-white p-5 shadow-sm space-y-4">
           <div className="border-b border-slate-800 pb-3">
             <h3 className="text-sm font-bold text-slate-100 uppercase tracking-wider">
               Inventory Asset Valuation by Category
@@ -209,7 +209,7 @@ export const AdminDashboard: React.FC = () => {
                   ))}
                 </Pie>
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px', fontSize: '12px' }}
+                  contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e8e4dc', color: '#14120e', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', fontSize: '12px' }}
                   formatter={(val: any) => [formatCurrency(val), 'Valuation']}
                 />
                 <Legend wrapperStyle={{ fontSize: '11px' }} />
@@ -222,7 +222,7 @@ export const AdminDashboard: React.FC = () => {
       {/* Production Machinery & Low Stock Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Machinery OEE Target Bar Chart */}
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-xl space-y-4">
+        <div className="rounded-2xl border border-slate-800 bg-white p-5 shadow-sm space-y-4">
           <div className="border-b border-slate-800 pb-3">
             <h3 className="text-sm font-bold text-slate-100 uppercase tracking-wider">
               Machinery Cell OEE vs Target Efficiency (%)
@@ -233,23 +233,23 @@ export const AdminDashboard: React.FC = () => {
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={PRODUCTION_CAPACITY_DATA} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                <XAxis dataKey="machine" stroke="#64748b" fontSize={11} />
-                <YAxis stroke="#64748b" fontSize={11} domain={[0, 100]} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#e8e4dc" />
+                <XAxis dataKey="machine" stroke="#78716c" fontSize={11} />
+                <YAxis stroke="#78716c" fontSize={11} domain={[0, 100]} />
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px', fontSize: '12px' }}
+                  contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e8e4dc', color: '#14120e', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)', fontSize: '12px' }}
                   formatter={(val: any) => [`${val}%`, '']}
                 />
                 <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
                 <Bar dataKey="output" name="Current OEE (%)" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="target" name="Target OEE (%)" fill="#334155" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="target" name="Target OEE (%)" fill="#d6d3d1" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         {/* Low Stock Urgent Reorder Feed */}
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-xl space-y-4">
+        <div className="rounded-2xl border border-slate-800 bg-white p-5 shadow-sm space-y-4">
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
             <div>
               <h3 className="text-sm font-bold text-slate-100 uppercase tracking-wider">
@@ -257,7 +257,7 @@ export const AdminDashboard: React.FC = () => {
               </h3>
               <p className="text-xs text-slate-400">Requires purchase order procurement</p>
             </div>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-amber-500/20 text-amber-400">
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-amber-50 text-amber-800 border border-amber-200">
               {lowStockCount} Items
             </span>
           </div>
@@ -266,16 +266,16 @@ export const AdminDashboard: React.FC = () => {
             {inventory.slice(0, 4).map((item) => (
               <div
                 key={item.inventoryId}
-                className="p-3 rounded-xl bg-slate-950/60 border border-slate-800/80 flex items-center justify-between"
+                className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between"
               >
                 <div>
-                  <h4 className="text-xs font-semibold text-slate-200">{item.productName}</h4>
+                  <h4 className="text-xs font-semibold text-slate-100">{item.productName}</h4>
                   <p className="text-[11px] text-slate-400 font-mono mt-0.5">
                     {item.warehouseName} • Min: {item.minStock} {item.unit}
                   </p>
                 </div>
                 <div className="text-right">
-                  <span className="font-mono text-sm font-bold text-amber-400">
+                  <span className="font-mono text-sm font-bold text-amber-600">
                     {item.quantity} {item.unit}
                   </span>
                   <div className="mt-1">

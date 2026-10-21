@@ -1,7 +1,7 @@
 export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat('en-IN', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'INR',
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(amount);
@@ -56,14 +56,14 @@ export function getStatusBadgeClass(status: string): string {
     case 'RUNNING':
     case 'RESOLVED':
     case 'DELIVERED':
-      return 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30';
+      return 'bg-emerald-50 text-emerald-800 border-emerald-200/90 font-semibold shadow-xs';
 
     case 'IN_PROGRESS':
     case 'ASSIGNED':
     case 'BUSY':
     case 'PROCESSING':
     case 'PICKED':
-      return 'bg-blue-500/15 text-blue-400 border-blue-500/30';
+      return 'bg-blue-50 text-blue-800 border-blue-200/90 font-semibold shadow-xs';
 
     case 'PENDING':
     case 'LOW_STOCK':
@@ -75,7 +75,7 @@ export function getStatusBadgeClass(status: string): string {
     case 'UNPAID':
     case 'ACKNOWLEDGED':
     case 'PLANNED':
-      return 'bg-amber-500/15 text-amber-400 border-amber-500/30';
+      return 'bg-amber-50 text-amber-900 border-amber-200/90 font-semibold shadow-xs';
 
     case 'OUT_OF_STOCK':
     case 'CRITICAL':
@@ -88,7 +88,7 @@ export function getStatusBadgeClass(status: string): string {
     case 'ABSENT':
     case 'DEFECTIVE':
     case 'SUSPENDED':
-      return 'bg-rose-500/15 text-rose-400 border-rose-500/30';
+      return 'bg-rose-50 text-rose-800 border-rose-200/90 font-semibold shadow-xs';
 
     case 'MAINTENANCE':
     case 'ON_LEAVE':
@@ -96,6 +96,6 @@ export function getStatusBadgeClass(status: string): string {
     case 'INACTIVE':
     case 'CREATED':
     default:
-      return 'bg-slate-500/15 text-slate-400 border-slate-500/30';
+      return 'bg-stone-100 text-stone-700 border-stone-200/90 font-semibold shadow-xs';
   }
 }

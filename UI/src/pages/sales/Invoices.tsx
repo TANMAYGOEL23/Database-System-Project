@@ -175,7 +175,7 @@ export const Invoices: React.FC = () => {
     },
     {
       key: 'totalAmount',
-      header: 'Invoice Amount ($)',
+      header: 'Invoice Amount (₹)',
       sortable: true,
       align: 'right',
       render: (i) => (

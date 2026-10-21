@@ -11,31 +11,46 @@ export const INITIAL_USERS: User[] = [
   {
     userId: 'USR001',
     employeeId: 'EMP001',
-    username: 'admin',
+    username: 'tanmay',
     role: 'ADMIN',
     status: 'ACTIVE',
-    fullName: 'Alexander Vance',
-    email: 'alexander.vance@megafactory.internal',
+    fullName: 'Tanmay Goel',
+    email: 'tanmay.goel@megafactory.internal',
     departmentName: 'Executive Operations',
-    position: 'Chief Plant Operating Officer',
+    position: 'Owner & Chief Executive Officer',
     avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    passwordHash: 'cf28d56f01623c011bf817b6cbc103fc0eff415f446ac1fb05baf76e633bb016', // Tanmay@2026
   },
   {
     userId: 'USR002',
     employeeId: 'EMP004',
-    username: 'operator',
+    username: 'rohit',
     role: 'EMPLOYEE',
     status: 'ACTIVE',
-    fullName: 'Marcus Brody',
-    email: 'marcus.brody@megafactory.internal',
+    fullName: 'Rohit Chaurasiya',
+    email: 'rohit.chaurasiya@megafactory.internal',
     departmentName: 'Machining & Assembly',
-    position: 'Lead CNC Mill Machinist',
+    position: 'Lead CNC & Plant Operations Specialist',
     avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    passwordHash: '24dbc360c0cca645fd2fb879cb7c8d8eb39076b475ae88cbd6268d3334575c5a', // Rohit@2026
+  },
+  {
+    userId: 'USR003',
+    employeeId: 'EMP007',
+    username: 'ashish',
+    role: 'EMPLOYEE',
+    status: 'ACTIVE',
+    fullName: 'Ashish',
+    email: 'ashish@megafactory.internal',
+    departmentName: 'Robotics & Automation',
+    position: 'Robotics & Shop Floor Operator',
+    avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+    passwordHash: 'e8448f4ad3a81317413dacac54909ea3dc2b8112265d9a87f562d2abbe162c0a', // Ashish@2026
   },
 ];
 
 export const INITIAL_DEPARTMENTS: Department[] = [
-  { departmentId: 'DEP001', departmentName: 'Executive Operations', managerId: 'EMP001', managerName: 'Alexander Vance', employeeCount: 4, location: 'Building A, Floor 3' },
+  { departmentId: 'DEP001', departmentName: 'Executive Operations', managerId: 'EMP001', managerName: 'Tanmay Goel', employeeCount: 4, location: 'Building A, Floor 3' },
   { departmentId: 'DEP002', departmentName: 'Machining & Assembly', managerId: 'EMP002', managerName: 'Elena Rostova', employeeCount: 38, location: 'Plant 1, South Wing' },
   { departmentId: 'DEP003', departmentName: 'Warehouse & Logistics', managerId: 'EMP003', managerName: 'Devon Miles', employeeCount: 24, location: 'Logistics Hub Bay 4' },
   { departmentId: 'DEP004', departmentName: 'Quality & Testing', managerId: 'EMP005', managerName: 'Rachel Green', employeeCount: 12, location: 'Building B, Lab 2' },
@@ -43,12 +58,13 @@ export const INITIAL_DEPARTMENTS: Department[] = [
 ];
 
 export const INITIAL_EMPLOYEES: Employee[] = [
-  { employeeId: 'EMP001', firstName: 'Alexander', lastName: 'Vance', fullName: 'Alexander Vance', gender: 'MALE', phone: '+1 (555) 019-2834', email: 'alexander.vance@megafactory.internal', address: '742 Evergreen Terrace, Industrial Park', departmentId: 'DEP001', departmentName: 'Executive Operations', salary: 145000, joiningDate: '2021-03-15', status: 'ACTIVE', position: 'Chief Operating Officer' },
-  { employeeId: 'EMP002', firstName: 'Elena', lastName: 'Rostova', fullName: 'Elena Rostova', gender: 'FEMALE', phone: '+1 (555) 019-8832', email: 'elena.rostova@megafactory.internal', address: '128 Industrial Parkway, Sector 4', departmentId: 'DEP002', departmentName: 'Machining & Assembly', salary: 112000, joiningDate: '2021-06-01', status: 'ACTIVE', position: 'Plant Fabrication Manager' },
-  { employeeId: 'EMP003', firstName: 'Devon', lastName: 'Miles', fullName: 'Devon Miles', gender: 'MALE', phone: '+1 (555) 019-4411', email: 'devon.miles@megafactory.internal', address: '88 Logistics Blvd, Dock 2', departmentId: 'DEP003', departmentName: 'Warehouse & Logistics', salary: 95000, joiningDate: '2022-01-10', status: 'ACTIVE', position: 'Supply Chain Director' },
-  { employeeId: 'EMP004', firstName: 'Marcus', lastName: 'Brody', fullName: 'Marcus Brody', gender: 'MALE', phone: '+1 (555) 019-9943', email: 'marcus.brody@megafactory.internal', address: '450 Foundry Lane, Apt 3B', departmentId: 'DEP002', departmentName: 'Machining & Assembly', salary: 72000, joiningDate: '2022-08-15', status: 'ACTIVE', position: 'Lead CNC Mill Machinist' },
-  { employeeId: 'EMP005', firstName: 'Rachel', lastName: 'Green', fullName: 'Rachel Green', gender: 'FEMALE', phone: '+1 (555) 019-6621', email: 'rachel.green@megafactory.internal', address: '912 Precision Road', departmentId: 'DEP004', departmentName: 'Quality & Testing', salary: 88000, joiningDate: '2023-02-01', status: 'ACTIVE', position: 'QA Lead Metrologist' },
-  { employeeId: 'EMP006', firstName: 'Vikram', lastName: 'Patel', fullName: 'Vikram Patel', gender: 'MALE', phone: '+1 (555) 019-3356', email: 'vikram.patel@megafactory.internal', address: '22 Robotics Way', departmentId: 'DEP005', departmentName: 'Robotics & Automation', salary: 118000, joiningDate: '2022-11-20', status: 'ACTIVE', position: 'Robotics Systems Architect' },
+  { employeeId: 'EMP001', firstName: 'Tanmay', lastName: 'Goel', fullName: 'Tanmay Goel', gender: 'MALE', phone: '+91 98765 43210', email: 'tanmay.goel@megafactory.internal', address: 'Plot 42, Cyber City Tech Zone', departmentId: 'DEP001', departmentName: 'Executive Operations', salary: 2400000, joiningDate: '2021-01-01', status: 'ACTIVE', position: 'Owner & Chief Executive Officer' },
+  { employeeId: 'EMP002', firstName: 'Elena', lastName: 'Rostova', fullName: 'Elena Rostova', gender: 'FEMALE', phone: '+1 (555) 019-8832', email: 'elena.rostova@megafactory.internal', address: '128 Industrial Parkway, Sector 4', departmentId: 'DEP002', departmentName: 'Machining & Assembly', salary: 1120000, joiningDate: '2021-06-01', status: 'ACTIVE', position: 'Plant Fabrication Manager' },
+  { employeeId: 'EMP003', firstName: 'Devon', lastName: 'Miles', fullName: 'Devon Miles', gender: 'MALE', phone: '+1 (555) 019-4411', email: 'devon.miles@megafactory.internal', address: '88 Logistics Blvd, Dock 2', departmentId: 'DEP003', departmentName: 'Warehouse & Logistics', salary: 950000, joiningDate: '2022-01-10', status: 'ACTIVE', position: 'Supply Chain Director' },
+  { employeeId: 'EMP004', firstName: 'Rohit', lastName: 'Chaurasiya', fullName: 'Rohit Chaurasiya', gender: 'MALE', phone: '+91 98111 22334', email: 'rohit.chaurasiya@megafactory.internal', address: '450 Foundry Lane, Plant Block B', departmentId: 'DEP002', departmentName: 'Machining & Assembly', salary: 780000, joiningDate: '2022-08-15', status: 'ACTIVE', position: 'Lead CNC & Plant Operations Specialist' },
+  { employeeId: 'EMP005', firstName: 'Rachel', lastName: 'Green', fullName: 'Rachel Green', gender: 'FEMALE', phone: '+1 (555) 019-6621', email: 'rachel.green@megafactory.internal', address: '912 Precision Road', departmentId: 'DEP004', departmentName: 'Quality & Testing', salary: 880000, joiningDate: '2023-02-01', status: 'ACTIVE', position: 'QA Lead Metrologist' },
+  { employeeId: 'EMP006', firstName: 'Vikram', lastName: 'Patel', fullName: 'Vikram Patel', gender: 'MALE', phone: '+1 (555) 019-3356', email: 'vikram.patel@megafactory.internal', address: '22 Robotics Way', departmentId: 'DEP005', departmentName: 'Robotics & Automation', salary: 1180000, joiningDate: '2022-11-20', status: 'ACTIVE', position: 'Robotics Systems Architect' },
+  { employeeId: 'EMP007', firstName: 'Ashish', lastName: '', fullName: 'Ashish', gender: 'MALE', phone: '+91 98222 33445', email: 'ashish@megafactory.internal', address: '12 Automation Corridor, Cell 3', departmentId: 'DEP005', departmentName: 'Robotics & Automation', salary: 720000, joiningDate: '2023-05-10', status: 'ACTIVE', position: 'Robotics & Shop Floor Operator' },
 ];
 
 export const INITIAL_ATTENDANCE_DEVICES: AttendanceDevice[] = [
@@ -58,17 +74,18 @@ export const INITIAL_ATTENDANCE_DEVICES: AttendanceDevice[] = [
 ];
 
 export const INITIAL_ATTENDANCE: AttendanceRecord[] = [
-  { attendanceId: 'ATT1001', employeeId: 'EMP001', employeeName: 'Alexander Vance', departmentName: 'Executive Operations', date: '2026-09-22', checkIn: '07:45 AM', checkOut: '05:15 PM', deviceId: 'DEV001', deviceName: 'Gate 1 Turnstile Biometric Scanner', status: 'PRESENT', workHours: 9.5 },
+  { attendanceId: 'ATT1001', employeeId: 'EMP001', employeeName: 'Tanmay Goel', departmentName: 'Executive Operations', date: '2026-09-22', checkIn: '07:45 AM', checkOut: '05:15 PM', deviceId: 'DEV001', deviceName: 'Gate 1 Turnstile Biometric Scanner', status: 'PRESENT', workHours: 9.5 },
   { attendanceId: 'ATT1002', employeeId: 'EMP002', employeeName: 'Elena Rostova', departmentName: 'Machining & Assembly', date: '2026-09-22', checkIn: '07:58 AM', checkOut: '04:45 PM', deviceId: 'DEV002', deviceName: 'Plant 1 RFID Gantry Sensor', status: 'PRESENT', workHours: 8.8 },
   { attendanceId: 'ATT1003', employeeId: 'EMP003', employeeName: 'Devon Miles', departmentName: 'Warehouse & Logistics', date: '2026-09-22', checkIn: '08:12 AM', checkOut: '05:00 PM', deviceId: 'DEV003', deviceName: 'Logistics Bay 4 Scanner', status: 'LATE', workHours: 8.8 },
-  { attendanceId: 'ATT1004', employeeId: 'EMP004', employeeName: 'Marcus Brody', departmentName: 'Machining & Assembly', date: '2026-09-22', checkIn: '06:50 AM', deviceId: 'DEV002', deviceName: 'Plant 1 RFID Gantry Sensor', status: 'PRESENT', workHours: 7.2 },
-  { attendanceId: 'ATT1005', employeeId: 'EMP005', employeeName: 'Rachel Green', departmentName: 'Quality & Testing', date: '2026-09-22', checkIn: '08:00 AM', checkOut: '04:30 PM', deviceId: 'DEV001', deviceName: 'Gate 1 Turnstile Biometric Scanner', status: 'PRESENT', workHours: 8.5 },
+  { attendanceId: 'ATT1004', employeeId: 'EMP004', employeeName: 'Rohit Chaurasiya', departmentName: 'Machining & Assembly', date: '2026-09-22', checkIn: '06:50 AM', deviceId: 'DEV002', deviceName: 'Plant 1 RFID Gantry Sensor', status: 'PRESENT', workHours: 7.2 },
+  { attendanceId: 'ATT1005', employeeId: 'EMP007', employeeName: 'Ashish', departmentName: 'Robotics & Automation', date: '2026-09-22', checkIn: '07:10 AM', deviceId: 'DEV001', deviceName: 'Gate 1 Turnstile Biometric Scanner', status: 'PRESENT', workHours: 8.0 },
 ];
 
 export const INITIAL_PAYROLL: Payroll[] = [
-  { payrollId: 'PAY202608-01', employeeId: 'EMP001', employeeName: 'Alexander Vance', departmentName: 'Executive Operations', month: 'August', year: 2026, basicSalary: 12083.33, bonus: 2500, deduction: 1850, netSalary: 12733.33, status: 'PAID', paymentDate: '2026-08-31', notes: 'Executive performance incentive' },
-  { payrollId: 'PAY202608-02', employeeId: 'EMP002', employeeName: 'Elena Rostova', departmentName: 'Machining & Assembly', month: 'August', year: 2026, basicSalary: 9333.33, bonus: 1200, deduction: 1100, netSalary: 9433.33, status: 'PAID', paymentDate: '2026-08-31', notes: 'Monthly plant target bonus' },
-  { payrollId: 'PAY202608-03', employeeId: 'EMP004', employeeName: 'Marcus Brody', departmentName: 'Machining & Assembly', month: 'August', year: 2026, basicSalary: 6000.00, bonus: 750, deduction: 620, netSalary: 6130.00, status: 'PAID', paymentDate: '2026-08-31', notes: 'Overtime shift compensation (32 hrs)' },
+  { payrollId: 'PAY202608-01', employeeId: 'EMP001', employeeName: 'Tanmay Goel', departmentName: 'Executive Operations', month: 'August', year: 2026, basicSalary: 200000, bonus: 50000, deduction: 25000, netSalary: 225000, status: 'PAID', paymentDate: '2026-08-31', notes: 'Executive leadership disbursement' },
+  { payrollId: 'PAY202608-02', employeeId: 'EMP002', employeeName: 'Elena Rostova', departmentName: 'Machining & Assembly', month: 'August', year: 2026, basicSalary: 93333, bonus: 12000, deduction: 11000, netSalary: 94333, status: 'PAID', paymentDate: '2026-08-31', notes: 'Monthly plant target bonus' },
+  { payrollId: 'PAY202608-03', employeeId: 'EMP004', employeeName: 'Rohit Chaurasiya', departmentName: 'Machining & Assembly', month: 'August', year: 2026, basicSalary: 65000, bonus: 8500, deduction: 6200, netSalary: 67300, status: 'PAID', paymentDate: '2026-08-31', notes: 'Overtime CNC shift compensation' },
+  { payrollId: 'PAY202608-04', employeeId: 'EMP007', employeeName: 'Ashish', departmentName: 'Robotics & Automation', month: 'August', year: 2026, basicSalary: 60000, bonus: 7000, deduction: 5800, netSalary: 61200, status: 'PAID', paymentDate: '2026-08-31', notes: 'Autonomous cell dispatch bonus' },
 ];
 
 export const INITIAL_PRODUCTS: Product[] = [
@@ -158,15 +175,15 @@ export const INITIAL_MACHINES: Machine[] = [
 ];
 
 export const INITIAL_PRODUCTION_ORDERS: ProductionOrder[] = [
-  { productionOrderId: 'WO-MFG-8801', productId: 'PRD-HYD-01', productName: 'High-Pressure Hydraulic Actuator 250BAR', machineId: 'MCH-001', machineName: 'Hermle 5-Axis CNC Machining Center C42U', quantity: 50, producedQuantity: 38, startDate: '2026-09-18', endDate: '2026-09-26', status: 'IN_PROGRESS', priority: 'HIGH', assignedOperatorId: 'EMP004', assignedOperatorName: 'Marcus Brody', notes: 'Precision aerospace hydraulic batch #88' },
+  { productionOrderId: 'WO-MFG-8801', productId: 'PRD-HYD-01', productName: 'High-Pressure Hydraulic Actuator 250BAR', machineId: 'MCH-001', machineName: 'Hermle 5-Axis CNC Machining Center C42U', quantity: 50, producedQuantity: 38, startDate: '2026-09-18', endDate: '2026-09-26', status: 'IN_PROGRESS', priority: 'HIGH', assignedOperatorId: 'EMP004', assignedOperatorName: 'Rohit Chaurasiya', notes: 'Precision aerospace hydraulic batch #88' },
   { productionOrderId: 'WO-MFG-8802', productId: 'PRD-SMR-CH', productName: 'Carbon Fiber Robot Chassis Rail 1.8M', machineId: 'MCH-002', machineName: 'Schuler 500-Ton Hydraulic Servo Press', quantity: 80, producedQuantity: 80, startDate: '2026-09-10', endDate: '2026-09-19', status: 'COMPLETED', priority: 'MEDIUM', assignedOperatorId: 'EMP002', assignedOperatorName: 'Elena Rostova', notes: 'Completed and passed ultrasonic crack inspection' },
-  { productionOrderId: 'WO-MFG-8803', productId: 'PRD-CNC-SP', productName: 'Tungsten Carbide CNC End Mill Drill 12mm', machineId: 'MCH-001', machineName: 'Hermle 5-Axis CNC Machining Center C42U', quantity: 200, producedQuantity: 45, startDate: '2026-09-21', endDate: '2026-09-28', status: 'IN_PROGRESS', priority: 'URGENT', assignedOperatorId: 'EMP004', assignedOperatorName: 'Marcus Brody', notes: 'Expedited for defense contractor contract' },
+  { productionOrderId: 'WO-MFG-8803', productId: 'PRD-CNC-SP', productName: 'Tungsten Carbide CNC End Mill Drill 12mm', machineId: 'MCH-001', machineName: 'Hermle 5-Axis CNC Machining Center C42U', quantity: 200, producedQuantity: 45, startDate: '2026-09-21', endDate: '2026-09-28', status: 'IN_PROGRESS', priority: 'URGENT', assignedOperatorId: 'EMP004', assignedOperatorName: 'Rohit Chaurasiya', notes: 'Expedited for defense contractor contract' },
 ];
 
 export const INITIAL_PRODUCTION_LOGS: ProductionLog[] = [
-  { logId: 'LOG-5501', productionOrderId: 'WO-MFG-8801', timestamp: '2026-09-22 08:30', quantityProduced: 12, status: 'NORMAL', remarks: 'Morning shift batch run; tolerance within 0.002mm', operatorName: 'Marcus Brody' },
-  { logId: 'LOG-5502', productionOrderId: 'WO-MFG-8801', timestamp: '2026-09-21 16:45', quantityProduced: 14, status: 'NORMAL', remarks: 'Afternoon run complete without vibration alarms', operatorName: 'Marcus Brody' },
-  { logId: 'LOG-5503', productionOrderId: 'WO-MFG-8803', timestamp: '2026-09-22 09:10', quantityProduced: 45, status: 'NORMAL', remarks: 'Automated tool calibration verified by metrology', operatorName: 'Marcus Brody' },
+  { logId: 'LOG-5501', productionOrderId: 'WO-MFG-8801', timestamp: '2026-09-22 08:30', quantityProduced: 12, status: 'NORMAL', remarks: 'Morning shift batch run; tolerance within 0.002mm', operatorName: 'Rohit Chaurasiya' },
+  { logId: 'LOG-5502', productionOrderId: 'WO-MFG-8801', timestamp: '2026-09-21 16:45', quantityProduced: 14, status: 'NORMAL', remarks: 'Afternoon run complete without vibration alarms', operatorName: 'Rohit Chaurasiya' },
+  { logId: 'LOG-5503', productionOrderId: 'WO-MFG-8803', timestamp: '2026-09-22 09:10', quantityProduced: 45, status: 'NORMAL', remarks: 'Automated tool calibration verified by metrology', operatorName: 'Rohit Chaurasiya' },
 ];
 
 export const INITIAL_ROBOTS: Robot[] = [
@@ -202,7 +219,7 @@ export const INITIAL_SENSOR_DATA: SensorData[] = [
 export const INITIAL_ALERTS: Alert[] = [
   { alertId: 'ALT-8891', sensorId: 'SNS002', sensorName: 'Hydraulic Press Vibration Sensor', alertType: 'VIBRATION_THRESHOLD_EXCEEDED', severity: 'HIGH', time: '2026-09-22 09:15:22', status: 'ACTIVE', message: 'Hydraulic ram vibration measured 7.8 mm/s exceeding maximum safe threshold (6.5 mm/s)', location: 'Cell Beta (Schuler MSP-500)' },
   { alertId: 'ALT-8890', sensorId: 'SNS001', sensorName: 'CNC Spindle 1 Thermal Probe', alertType: 'TEMPERATURE_ELEVATED', severity: 'MEDIUM', time: '2026-09-21 14:22:10', status: 'ACKNOWLEDGED', message: 'Spindle core temperature reached 58.2°C during high-feed titanium milling run', location: 'Cell Alpha (Hermle C42U)', acknowledgedBy: 'Elena Rostova' },
-  { alertId: 'ALT-8889', sensorId: 'SNS003', sensorName: 'Battery Charging Dock Gas Sniffer', alertType: 'HYDROGEN_TRACE_DETECTED', severity: 'LOW', time: '2026-09-20 11:05:40', status: 'RESOLVED', message: 'Trace battery outgassing resolved after dock ventilation boost', location: 'AMR Docking Bay 1', acknowledgedBy: 'Alexander Vance', resolvedAt: '2026-09-20 11:30:00' },
+  { alertId: 'ALT-8889', sensorId: 'SNS003', sensorName: 'Battery Charging Dock Gas Sniffer', alertType: 'HYDROGEN_TRACE_DETECTED', severity: 'LOW', time: '2026-09-20 11:05:40', status: 'RESOLVED', message: 'Trace battery outgassing resolved after dock ventilation boost', location: 'AMR Docking Bay 1', acknowledgedBy: 'Tanmay Goel', resolvedAt: '2026-09-20 11:30:00' },
 ];
 
 export const INITIAL_CUSTOMERS: Customer[] = [

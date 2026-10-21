@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Package, QrCode, Tag, DollarSign, Layers } from 'lucide-react';
+import { Plus, Edit2, Trash2, Package, QrCode, Tag, IndianRupee, Layers } from 'lucide-react';
 import { DataTable, Column, FilterConfig } from '../../components/tables/DataTable';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
@@ -184,14 +184,14 @@ export const Products: React.FC = () => {
     },
     {
       key: 'costPrice',
-      header: 'Cost Price ($)',
+      header: 'Cost Price (₹)',
       sortable: true,
       align: 'right',
       render: (p) => <span className="font-mono text-xs text-slate-300">{formatCurrency(p.costPrice)}</span>,
     },
     {
       key: 'sellingPrice',
-      header: 'Selling Price ($)',
+      header: 'Selling Price (₹)',
       sortable: true,
       align: 'right',
       render: (p) => (
@@ -313,7 +313,7 @@ export const Products: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Input
-              label="Cost Price ($)"
+              label="Cost Price (₹)"
               type="number"
               step="0.01"
               value={formData.costPrice}
@@ -322,7 +322,7 @@ export const Products: React.FC = () => {
               required
             />
             <Input
-              label="Selling Price ($)"
+              label="Selling Price (₹)"
               type="number"
               step="0.01"
               value={formData.sellingPrice}

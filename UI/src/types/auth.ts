@@ -13,6 +13,7 @@ export interface User {
   departmentName?: string;
   position?: string;
   avatarUrl?: string;
+  passwordHash?: string;
 }
 
 export interface LoginRequest {
@@ -34,7 +35,6 @@ export interface AuthContextType {
   isLoading: boolean;
   login: (credentials: LoginRequest) => Promise<boolean>;
   loginWithGoogle: () => Promise<void>;
-  completeOAuthLogin: () => Promise<User>;
   logout: () => void;
   isAdmin: boolean;
   isEmployee: boolean;

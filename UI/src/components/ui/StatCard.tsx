@@ -28,16 +28,16 @@ export const StatCard: React.FC<StatCardProps> = ({
   className,
 }) => {
   const badgeColors = {
-    blue: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-    emerald: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-    amber: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-    rose: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
+    blue: 'bg-blue-50 text-blue-700 border-blue-200',
+    emerald: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    amber: 'bg-amber-50 text-amber-800 border-amber-200',
+    rose: 'bg-rose-50 text-rose-700 border-rose-200',
   };
 
   return (
     <div
       className={cn(
-        'relative bg-slate-900 border border-slate-800/80 hover:border-slate-700/80 rounded-2xl p-5 shadow-lg shadow-black/20 transition-all duration-200 group overflow-hidden',
+        'relative bg-white border border-slate-800 hover:border-slate-700 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-200 group overflow-hidden',
         className
       )}
     >
@@ -46,18 +46,18 @@ export const StatCard: React.FC<StatCardProps> = ({
           <p className="text-xs font-semibold text-slate-400 tracking-wide uppercase">{title}</p>
           <h4 className="text-2xl font-bold font-mono tracking-tight text-slate-100">{value}</h4>
         </div>
-        <div className="p-2.5 rounded-xl bg-slate-800/70 border border-slate-700/60 text-blue-400 group-hover:scale-105 transition-transform">
+        <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-blue-600 group-hover:scale-105 transition-transform shadow-xs">
           {icon}
         </div>
       </div>
 
       {(trend || subtitle || badge) && (
-        <div className="mt-4 pt-3 border-t border-slate-800/60 flex items-center justify-between text-xs">
+        <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs">
           {trend && (
             <div
               className={cn(
                 'flex items-center gap-1 font-mono font-medium',
-                trend.isPositive ? 'text-emerald-400' : 'text-rose-400'
+                trend.isPositive ? 'text-emerald-700 font-semibold' : 'text-rose-700 font-semibold'
               )}
             >
               {trend.isPositive ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}

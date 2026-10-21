@@ -4,25 +4,37 @@
 
 @layer base {
   body {
-    @apply bg-slate-950 text-slate-100 selection:bg-blue-600 selection:text-white;
+    @apply bg-slate-950 text-slate-100 antialiased;
+    background-color: #faf8f5;
+    color: #14120e;
+  }
+
+  ::selection {
+    background-color: #2563eb;
+    color: #ffffff;
+  }
+
+  /* Make sure titles styled with text-white stay dark in this light cream theme */
+  h1.text-white, h2.text-white, h3.text-white, h4.text-white, h5.text-white, h6.text-white {
+    color: #14120e !important;
   }
 }
 
-/* Custom industrial scrollbars */
+/* Custom warm cream/light industrial scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0b0f17;
+  background: #faf8f5;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1e293b;
+  background: #d8d3cb;
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+  background: #b8b2a7;
 }

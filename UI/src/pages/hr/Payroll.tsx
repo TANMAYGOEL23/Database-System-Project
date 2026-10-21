@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Receipt, DollarSign, Calendar, Eye, Printer, CheckCircle2 } from 'lucide-react';
+import { Plus, Receipt, IndianRupee, Calendar, Eye, Printer, CheckCircle2 } from 'lucide-react';
 import { DataTable, Column, FilterConfig } from '../../components/tables/DataTable';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
@@ -117,14 +117,14 @@ export const PayrollPage: React.FC = () => {
     },
     {
       key: 'basicSalary',
-      header: 'Basic Monthly ($)',
+      header: 'Basic Monthly (₹)',
       sortable: true,
       align: 'right',
       render: (p) => <span className="font-mono text-xs text-slate-300">{formatCurrency(p.basicSalary)}</span>,
     },
     {
       key: 'netSalary',
-      header: 'Net Take-Home ($)',
+      header: 'Net Take-Home (₹)',
       sortable: true,
       align: 'right',
       render: (p) => (
@@ -253,14 +253,14 @@ export const PayrollPage: React.FC = () => {
 
           <div className="grid grid-cols-2 gap-4">
             <Input
-              label="Performance Bonus ($)"
+              label="Performance Bonus (₹)"
               type="number"
               value={formData.bonus}
               onChange={(e) => setFormData({ ...formData, bonus: e.target.value })}
               required
             />
             <Input
-              label="Statutory Deductions ($)"
+              label="Statutory Deductions (₹)"
               type="number"
               value={formData.deduction}
               onChange={(e) => setFormData({ ...formData, deduction: e.target.value })}

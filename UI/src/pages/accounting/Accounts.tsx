@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, BookOpen, DollarSign, Wallet, ShieldCheck, RefreshCw } from 'lucide-react';
+import { Plus, BookOpen, IndianRupee, Wallet, ShieldCheck, RefreshCw } from 'lucide-react';
 import { DataTable, Column, FilterConfig } from '../../components/tables/DataTable';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { Button } from '../../components/ui/Button';
@@ -123,7 +123,7 @@ export const Accounts: React.FC = () => {
     },
     {
       key: 'balance',
-      header: 'General Ledger Balance ($)',
+      header: 'General Ledger Balance (₹)',
       sortable: true,
       align: 'right',
       render: (a) => (
@@ -224,7 +224,7 @@ export const Accounts: React.FC = () => {
           />
 
           <Input
-            label="Initial Starting Balance ($)"
+            label="Initial Starting Balance (₹)"
             type="number"
             step="0.01"
             value={balance}

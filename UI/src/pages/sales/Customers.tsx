@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Users, Phone, Mail, MapPin, DollarSign } from 'lucide-react';
+import { Plus, Edit2, Trash2, Users, Phone, Mail, MapPin, IndianRupee } from 'lucide-react';
 import { DataTable, Column } from '../../components/tables/DataTable';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
@@ -191,7 +191,7 @@ export const Customers: React.FC = () => {
     },
     {
       key: 'totalPurchases',
-      header: 'Cumulative Billing ($)',
+      header: 'Cumulative Billing (₹)',
       sortable: true,
       align: 'right',
       render: (c) => (

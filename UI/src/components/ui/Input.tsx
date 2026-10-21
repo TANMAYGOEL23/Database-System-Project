@@ -16,9 +16,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="w-full space-y-1.5">
         {label && (
-          <label htmlFor={inputId} className="block text-xs font-medium text-slate-300">
+          <label htmlFor={inputId} className="block text-xs font-semibold text-slate-300">
             {label}
-            {props.required && <span className="text-rose-400 ml-1">*</span>}
+            {props.required && <span className="text-rose-500 ml-1">*</span>}
           </label>
         )}
         <div className="relative flex items-center">
@@ -31,13 +31,13 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             id={inputId}
             ref={ref}
             className={cn(
-              'w-full bg-slate-900 border rounded-lg py-2 px-3 text-sm text-slate-100 placeholder-slate-500 transition-colors focus:outline-none focus:ring-1',
+              'w-full bg-white border rounded-lg py-2 px-3 text-sm text-slate-100 placeholder-slate-400 transition-colors focus:outline-none focus:ring-2 shadow-xs',
               leftIcon ? 'pl-9' : '',
               rightIcon ? 'pr-9' : '',
               error
-                ? 'border-rose-500/50 focus:border-rose-500 focus:ring-rose-500/30'
-                : 'border-slate-800 focus:border-blue-500 focus:ring-blue-500/30',
-              'disabled:bg-slate-950 disabled:border-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed',
+                ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-500/20'
+                : 'border-slate-800 focus:border-blue-500 focus:ring-blue-500/20',
+              'disabled:bg-slate-950 disabled:border-slate-800 disabled:text-slate-400 disabled:cursor-not-allowed',
               className
             )}
             {...props}

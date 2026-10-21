@@ -2,103 +2,63 @@ import { delay } from './api';
 import { supabase, isSupabaseConfigured } from './supabase';
 import { mockStorage } from './mockStorage';
 import { LoginRequest, LoginResponse, User } from '../types/auth';
+import { hashPassword } from '../utils/crypto';
 
-const mapDbUser = (data: any, fallbackAvatar?: string): User => ({
-  userId: data.user_id || data.userId,
-  employeeId: data.employee_id || data.employeeId,
-  username: data.username,
-  role: data.role,
-  status: data.status,
-  fullName: data.full_name || data.fullName,
-  email: data.email,
-  departmentName: data.department_name || data.departmentName,
-  position: data.position,
-  avatarUrl: data.avatar_url || data.avatarUrl || fallbackAvatar,
-});
+// Username aliases mapping for quick transition
+const USERNAME_ALIASES: Record<string, string> = {
+  admin: 'tanmay',
+  operator: 'rohit',
+};
 
 export const authService = {
-  /**
-   * Redirects the browser to Google's consent screen via Supabase Auth.
-   * After consent, Google redirects back to /auth/callback.
-   */
-  async signInWithGoogle(): Promise<void> {
-    if (!isSupabaseConfigured()) {
-      throw new Error(
-        'Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in UI/.env'
-      );
-    }
-
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-        queryParams: {
-          prompt: 'select_account',
-        },
-      },
-    });
-
-    if (error) throw error;
-  },
-
-  /**
-   * Called on the OAuth callback page. Reads the Supabase session created from
-   * the Google login and maps the Google email to an ERP user record.
-   */
-  async completeOAuthLogin(): Promise<LoginResponse> {
-    if (!isSupabaseConfigured()) {
-      throw new Error('Supabase is not configured');
-    }
-
-    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError) throw sessionError;
-
-    const session = sessionData.session;
-    if (!session?.user?.email) {
-      throw new Error('Google sign-in did not return a valid session');
-    }
-
-    const email = session.user.email.trim();
-    const meta = session.user.user_metadata || {};
-    const googleAvatar: string | undefined = meta.avatar_url || meta.picture;
-
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .ilike('email', email)
-      .maybeSingle();
-
-    if (error || !data) {
-      await supabase.auth.signOut();
-      throw new Error(`No ERP account is linked to ${email}. Contact your administrator.`);
-    }
-
-    if (data.status && data.status !== 'ACTIVE') {
-      await supabase.auth.signOut();
-      throw new Error(`Account ${email} is ${String(data.status).toLowerCase()}.`);
-    }
-
-    return {
-      token: session.access_token,
-      user: mapDbUser(data, googleAvatar),
-      expiresIn: session.expires_in ?? 3600,
-    };
-  },
-
   async login(credentials: LoginRequest): Promise<LoginResponse> {
+    const rawUsername = credentials.username.trim().toLowerCase();
+    const resolvedUsername = USERNAME_ALIASES[rawUsername] || rawUsername;
+    const inputHash = await hashPassword(credentials.password || '');
+
     if (isSupabaseConfigured()) {
       try {
-        const { data, error } = await supabase
+        // Query by username or resolved alias
+        let { data, error } = await supabase
           .from('users')
           .select('*')
-          .ilike('username', credentials.username.trim())
+          .ilike('username', resolvedUsername)
           .single();
+
+        if (error || !data) {
+          // Fallback check original username
+          const res = await supabase
+            .from('users')
+            .select('*')
+            .ilike('username', rawUsername)
+            .single();
+          data = res.data;
+          error = res.error;
+        }
 
         if (error || !data) {
           throw new Error('Invalid username or password');
         }
 
-        const user: User = mapDbUser(data);
+        // Verify SHA-256 password hash if present in database
+        if (data.password_hash) {
+          if (data.password_hash !== inputHash) {
+            throw new Error('Invalid username or password');
+          }
+        }
+
+        const user: User = {
+          userId: data.user_id || data.userId,
+          employeeId: data.employee_id || data.employeeId,
+          username: data.username,
+          role: data.role,
+          status: data.status,
+          fullName: data.full_name || data.fullName,
+          email: data.email,
+          departmentName: data.department_name || data.departmentName,
+          position: data.position,
+          avatarUrl: data.avatar_url || data.avatarUrl,
+        };
 
         const token = `sb-jwt-${user.userId}-${Date.now()}`;
         return {
@@ -107,18 +67,24 @@ export const authService = {
           expiresIn: 86400,
         };
       } catch (err: any) {
-        console.warn('Supabase auth failed, trying fallback', err);
+        console.warn('Supabase auth check:', err.message);
         throw err;
       }
     }
 
-    // Mock Fallback
+    // Mock Fallback Mode
     await delay(300);
     const user = mockStorage.users.find(
-      (u) => u.username.toLowerCase() === credentials.username.toLowerCase()
+      (u) =>
+        u.username.toLowerCase() === resolvedUsername ||
+        u.username.toLowerCase() === rawUsername
     );
 
     if (user) {
+      if (user.passwordHash && user.passwordHash !== inputHash) {
+        throw new Error('Invalid username or password');
+      }
+
       const token = `mock-jwt-token-${user.role.toLowerCase()}-${Date.now()}`;
       return {
         token,
@@ -127,26 +93,25 @@ export const authService = {
       };
     }
 
-    if (credentials.username.toLowerCase().includes('admin')) {
-      const adminUser = mockStorage.users[0];
-      return {
-        token: `mock-jwt-token-admin-${Date.now()}`,
-        user: adminUser,
-        expiresIn: 86400,
-      };
-    }
-
-    const empUser = mockStorage.users[1];
-    return {
-      token: `mock-jwt-token-employee-${Date.now()}`,
-      user: empUser,
-      expiresIn: 86400,
-    };
+    throw new Error('Invalid username or password');
   },
 
   async getCurrentUser(): Promise<User | null> {
     const savedUser = localStorage.getItem('smart_erp_user');
     return savedUser ? JSON.parse(savedUser) : null;
+  },
+
+  async signInWithGoogle(): Promise<{ error: any }> {
+    if (!isSupabaseConfigured()) {
+      throw new Error('Supabase is not configured yet. Please check your .env credentials.');
+    }
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/dashboard`,
+      },
+    });
+    return { error };
   },
 
   async logout(): Promise<void> {

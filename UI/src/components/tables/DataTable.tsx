@@ -135,10 +135,10 @@ export function DataTable<T>({
   const hasActiveFilters = searchTerm !== '' || Object.keys(activeFilters).length > 0;
 
   return (
-    <div className="w-full bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+    <div className="w-full bg-white border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
       {/* Search & Filter Toolbar */}
       {(searchKey || filters.length > 0 || actions) && (
-        <div className="p-4 border-b border-slate-800 bg-slate-950/40 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+        <div className="p-4 border-b border-slate-800 bg-[#faf8f5]/80 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2.5 flex-1">
             {searchKey && (
               <div className="w-full sm:w-72">
@@ -159,7 +159,7 @@ export function DataTable<T>({
                 <select
                   value={activeFilters[filter.key] || ''}
                   onChange={(e) => handleFilterChange(filter.key, e.target.value)}
-                  className="w-full sm:w-auto bg-slate-900 border border-slate-800 rounded-lg py-2 px-3 text-xs text-slate-200 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                  className="w-full sm:w-auto bg-white border border-slate-800 rounded-lg py-2 px-3 text-xs text-slate-100 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 cursor-pointer shadow-xs"
                 >
                   <option value="">All {filter.label}</option>
                   {filter.options.map((opt) => (
@@ -177,7 +177,7 @@ export function DataTable<T>({
                 size="sm"
                 onClick={clearFilters}
                 leftIcon={<X className="w-3.5 h-3.5" />}
-                className="text-slate-400 hover:text-slate-200 text-xs"
+                className="text-slate-400 hover:text-slate-100 text-xs"
               >
                 Reset Filters
               </Button>
@@ -209,7 +209,7 @@ export function DataTable<T>({
         ) : (
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-slate-800 bg-slate-950/80 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+              <tr className="border-b border-slate-800 bg-[#faf8f5] text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
                 {columns.map((col) => (
                   <th
                     key={col.key}
@@ -221,14 +221,14 @@ export function DataTable<T>({
                     {col.sortable ? (
                       <button
                         onClick={() => handleSort(col.key)}
-                        className="inline-flex items-center gap-1.5 hover:text-slate-200 transition-colors uppercase"
+                        className="inline-flex items-center gap-1.5 hover:text-slate-100 transition-colors uppercase"
                       >
                         <span>{col.header}</span>
                         {sortConfig?.key === col.key ? (
                           sortConfig.direction === 'asc' ? (
-                            <ArrowUp className="w-3.5 h-3.5 text-blue-400" />
+                            <ArrowUp className="w-3.5 h-3.5 text-blue-600" />
                           ) : (
-                            <ArrowDown className="w-3.5 h-3.5 text-blue-400" />
+                            <ArrowDown className="w-3.5 h-3.5 text-blue-600" />
                           )
                         ) : (
                           <ArrowUpDown className="w-3 h-3 text-slate-600" />
@@ -241,13 +241,13 @@ export function DataTable<T>({
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60 text-xs font-normal">
+            <tbody className="divide-y divide-slate-800 text-xs font-normal">
               {paginatedData.map((row) => (
                 <tr
                   key={rowKey(row)}
                   onClick={() => onRowClick?.(row)}
                   className={`transition-colors duration-150 ${
-                    onRowClick ? 'cursor-pointer hover:bg-slate-800/50' : 'hover:bg-slate-800/30'
+                    onRowClick ? 'cursor-pointer hover:bg-slate-850' : 'hover:bg-slate-850/60'
                   }`}
                 >
                   {columns.map((col) => (

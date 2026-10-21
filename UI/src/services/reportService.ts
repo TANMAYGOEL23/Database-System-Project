@@ -36,7 +36,7 @@ export const reportService = {
               summaryMetrics: [
                 { label: 'SKU Item Count', value: items.length },
                 { label: 'Total Stock Quantity', value: items.reduce((s, i) => s + (i.quantity || 0), 0) },
-                { label: 'Total Asset Valuation', value: `$${totalValuation.toLocaleString()}` },
+                { label: 'Total Asset Valuation', value: `₹${totalValuation.toLocaleString('en-IN')}` },
                 { label: 'Low Stock Alerts', value: items.filter((i) => i.stock_status === 'LOW_STOCK').length },
               ],
               columns: [
@@ -85,7 +85,7 @@ export const reportService = {
               generatedAt: now,
               summaryMetrics: [
                 { label: 'Total Purchase Orders', value: items.length },
-                { label: 'Cumulative PO Value', value: `$${totalSpend.toLocaleString()}` },
+                { label: 'Cumulative PO Value', value: `₹${totalSpend.toLocaleString('en-IN')}` },
                 { label: 'Pending Deliveries', value: items.filter((p) => p.status === 'APPROVED' || p.status === 'PENDING').length },
               ],
               columns: [
@@ -110,14 +110,14 @@ export const reportService = {
               generatedAt: now,
               summaryMetrics: [
                 { label: 'Invoices Billed', value: items.length },
-                { label: 'Gross Invoiced Sales', value: `$${totalRev.toLocaleString()}` },
-                { label: 'Paid Revenue Collected', value: `$${items.filter((i) => i.status === 'PAID').reduce((s, i) => s + parseFloat(i.total_amount || 0), 0).toLocaleString()}` },
+                { label: 'Gross Invoiced Sales', value: `₹${totalRev.toLocaleString('en-IN')}` },
+                { label: 'Paid Revenue Collected', value: `₹${items.filter((i) => i.status === 'PAID').reduce((s, i) => s + parseFloat(i.total_amount || 0), 0).toLocaleString('en-IN')}` },
               ],
               columns: [
                 { key: 'invoice_id', label: 'Invoice No.' },
                 { key: 'customer_name', label: 'Customer Client' },
                 { key: 'invoice_date', label: 'Billing Date' },
-                { key: 'total_amount', label: 'Amount ($)' },
+                { key: 'total_amount', label: 'Amount (₹)' },
                 { key: 'status', label: 'Payment State' },
               ],
               data: items,
@@ -184,7 +184,7 @@ export const reportService = {
               generatedAt: now,
               summaryMetrics: [
                 { label: 'Pay Slips Processed', value: items.length },
-                { label: 'Total Net Salary Paid', value: `$${totalDisbursed.toLocaleString()}` },
+                { label: 'Total Net Salary Paid', value: `₹${totalDisbursed.toLocaleString('en-IN')}` },
               ],
               columns: [
                 { key: 'payroll_id', label: 'Slip ID' },
@@ -212,15 +212,15 @@ export const reportService = {
               category: 'Finance',
               generatedAt: now,
               summaryMetrics: [
-                { label: 'Total Invoiced Revenue', value: `$${rev.toLocaleString()}` },
-                { label: 'Total OPEX & Payroll', value: `$${exp.toLocaleString()}` },
-                { label: 'Net Operating Margin', value: `$${net.toLocaleString()}` },
+                { label: 'Total Invoiced Revenue', value: `₹${rev.toLocaleString('en-IN')}` },
+                { label: 'Total OPEX & Payroll', value: `₹${exp.toLocaleString('en-IN')}` },
+                { label: 'Net Operating Margin', value: `₹${net.toLocaleString('en-IN')}` },
               ],
               columns: [
                 { key: 'expense_id', label: 'Txn Ref' },
                 { key: 'account_name', label: 'Account Category' },
                 { key: 'description', label: 'Memo' },
-                { key: 'amount', label: 'Amount ($)' },
+                { key: 'amount', label: 'Amount (₹)' },
                 { key: 'date', label: 'Posting Date' },
               ],
               data: exps || [],
@@ -292,7 +292,7 @@ export const reportService = {
       summaryMetrics: [
         { label: 'SKU Item Count', value: inv.length },
         { label: 'Total Stock Quantity', value: inv.reduce((s, i) => s + i.quantity, 0) },
-        { label: 'Total Asset Valuation', value: `$485,000` },
+        { label: 'Total Asset Valuation', value: `₹4,85,000` },
       ],
       columns: [
         { key: 'productId', label: 'SKU ID' },

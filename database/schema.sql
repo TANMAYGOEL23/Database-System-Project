@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS users (
     user_id TEXT PRIMARY KEY DEFAULT ('USR' || LPAD(FLOOR(RANDOM() * 1000)::TEXT, 3, '0')),
     employee_id TEXT,
     username TEXT UNIQUE NOT NULL,
+    password_hash TEXT DEFAULT 'ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f',
     role TEXT NOT NULL CHECK (role IN ('ADMIN', 'EMPLOYEE')),
     status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'INACTIVE', 'SUSPENDED')),
     full_name TEXT NOT NULL,
@@ -22,6 +23,9 @@ CREATE TABLE IF NOT EXISTS users (
     avatar_url TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Ensure existing database tables get password_hash column
+ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT;
 
 -- ==============================================================================
 -- 2. HUMAN RESOURCES (HR)
@@ -405,13 +409,19 @@ CREATE TABLE IF NOT EXISTS expenses (
 -- ==============================================================================
 -- 9. SEED INITIAL BASE DATA (OPTIONAL / READY TO USE)
 -- ==============================================================================
-INSERT INTO users (user_id, employee_id, username, role, status, full_name, email, department_name, position) VALUES
-('USR001', 'EMP001', 'admin', 'ADMIN', 'ACTIVE', 'Alexander Vance', 'alexander.vance@megafactory.internal', 'Executive Operations', 'Chief Plant Operating Officer'),
-('USR002', 'EMP004', 'operator', 'EMPLOYEE', 'ACTIVE', 'Marcus Brody', 'marcus.brody@megafactory.internal', 'Machining & Assembly', 'Lead CNC Mill Machinist')
-ON CONFLICT (username) DO NOTHING;
+INSERT INTO users (user_id, employee_id, username, role, status, full_name, email, department_name, position, password_hash) VALUES
+('USR001', 'EMP001', 'tanmay', 'ADMIN', 'ACTIVE', 'Tanmay Goel', 'tanmay.goel@megafactory.internal', 'Executive Operations', 'Owner & Chief Executive Officer', 'cf28d56f01623c011bf817b6cbc103fc0eff415f446ac1fb05baf76e633bb016'),
+('USR002', 'EMP004', 'rohit', 'EMPLOYEE', 'ACTIVE', 'Rohit Chaurasiya', 'rohit.chaurasiya@megafactory.internal', 'Machining & Assembly', 'Lead CNC & Plant Operations Specialist', '24dbc360c0cca645fd2fb879cb7c8d8eb39076b475ae88cbd6268d3334575c5a'),
+('USR003', 'EMP007', 'ashish', 'EMPLOYEE', 'ACTIVE', 'Ashish', 'ashish@megafactory.internal', 'Robotics & Automation', 'Robotics & Shop Floor Operator', 'e8448f4ad3a81317413dacac54909ea3dc2b8112265d9a87f562d2abbe162c0a'),
+('USR004', 'EMP001', 'admin', 'ADMIN', 'ACTIVE', 'Tanmay Goel', 'admin@megafactory.internal', 'Executive Operations', 'Owner & Chief Executive Officer', 'cf28d56f01623c011bf817b6cbc103fc0eff415f446ac1fb05baf76e633bb016'),
+('USR005', 'EMP004', 'operator', 'EMPLOYEE', 'ACTIVE', 'Rohit Chaurasiya', 'operator@megafactory.internal', 'Machining & Assembly', 'Lead CNC & Plant Operations Specialist', '24dbc360c0cca645fd2fb879cb7c8d8eb39076b475ae88cbd6268d3334575c5a')
+ON CONFLICT (username) DO UPDATE SET 
+    full_name = EXCLUDED.full_name,
+    password_hash = EXCLUDED.password_hash,
+    position = EXCLUDED.position;
 
 INSERT INTO departments (department_id, department_name, manager_id, manager_name, employee_count, location) VALUES
-('DEP001', 'Executive Operations', 'EMP001', 'Alexander Vance', 4, 'Building A, Floor 3'),
+('DEP001', 'Executive Operations', 'EMP001', 'Tanmay Goel', 4, 'Building A, Floor 3'),
 ('DEP002', 'Machining & Assembly', 'EMP002', 'Elena Rostova', 38, 'Plant 1, South Wing'),
 ('DEP003', 'Warehouse & Logistics', 'EMP003', 'Devon Miles', 24, 'Logistics Hub Bay 4'),
 ('DEP004', 'Quality & Testing', 'EMP005', 'Rachel Green', 12, 'Building B, Lab 2'),
@@ -419,13 +429,17 @@ INSERT INTO departments (department_id, department_name, manager_id, manager_nam
 ON CONFLICT (department_id) DO NOTHING;
 
 INSERT INTO employees (employee_id, first_name, last_name, gender, phone, email, address, department_id, department_name, salary, joining_date, status, position) VALUES
-('EMP001', 'Alexander', 'Vance', 'MALE', '+1 (555) 019-2834', 'alexander.vance@megafactory.internal', '742 Evergreen Terrace', 'DEP001', 'Executive Operations', 145000, '2021-03-15', 'ACTIVE', 'Chief Operating Officer'),
-('EMP002', 'Elena', 'Rostova', 'FEMALE', '+1 (555) 019-8832', 'elena.rostova@megafactory.internal', '128 Industrial Parkway', 'DEP002', 'Machining & Assembly', 112000, '2021-06-01', 'ACTIVE', 'Plant Fabrication Manager'),
-('EMP003', 'Devon', 'Miles', 'MALE', '+1 (555) 019-4411', 'devon.miles@megafactory.internal', '88 Logistics Blvd', 'DEP003', 'Warehouse & Logistics', 95000, '2022-01-10', 'ACTIVE', 'Supply Chain Director'),
-('EMP004', 'Marcus', 'Brody', 'MALE', '+1 (555) 019-9943', 'marcus.brody@megafactory.internal', '450 Foundry Lane', 'DEP002', 'Machining & Assembly', 72000, '2022-08-15', 'ACTIVE', 'Lead CNC Mill Machinist'),
-('EMP005', 'Rachel', 'Green', 'FEMALE', '+1 (555) 019-6621', 'rachel.green@megafactory.internal', '912 Precision Road', 'DEP004', 'Quality & Testing', 88000, '2023-02-01', 'ACTIVE', 'QA Lead Metrologist'),
-('EMP006', 'Vikram', 'Patel', 'MALE', '+1 (555) 019-3356', 'vikram.patel@megafactory.internal', '22 Robotics Way', 'DEP005', 'Robotics & Automation', 118000, '2022-11-20', 'ACTIVE', 'Robotics Systems Architect')
-ON CONFLICT (employee_id) DO NOTHING;
+('EMP001', 'Tanmay', 'Goel', 'MALE', '+91 98765 43210', 'tanmay.goel@megafactory.internal', 'Plot 42, Cyber City Tech Zone', 'DEP001', 'Executive Operations', 2400000, '2021-01-01', 'ACTIVE', 'Owner & Chief Executive Officer'),
+('EMP002', 'Elena', 'Rostova', 'FEMALE', '+1 (555) 019-8832', 'elena.rostova@megafactory.internal', '128 Industrial Parkway', 'DEP002', 'Machining & Assembly', 1120000, '2021-06-01', 'ACTIVE', 'Plant Fabrication Manager'),
+('EMP003', 'Devon', 'Miles', 'MALE', '+1 (555) 019-4411', 'devon.miles@megafactory.internal', '88 Logistics Blvd', 'DEP003', 'Warehouse & Logistics', 950000, '2022-01-10', 'ACTIVE', 'Supply Chain Director'),
+('EMP004', 'Rohit', 'Chaurasiya', 'MALE', '+91 98111 22334', 'rohit.chaurasiya@megafactory.internal', '450 Foundry Lane', 'DEP002', 'Machining & Assembly', 780000, '2022-08-15', 'ACTIVE', 'Lead CNC & Plant Operations Specialist'),
+('EMP005', 'Rachel', 'Green', 'FEMALE', '+1 (555) 019-6621', 'rachel.green@megafactory.internal', '912 Precision Road', 'DEP004', 'Quality & Testing', 880000, '2023-02-01', 'ACTIVE', 'QA Lead Metrologist'),
+('EMP006', 'Vikram', 'Patel', 'MALE', '+1 (555) 019-3356', 'vikram.patel@megafactory.internal', '22 Robotics Way', 'DEP005', 'Robotics & Automation', 1180000, '2022-11-20', 'ACTIVE', 'Robotics Systems Architect'),
+('EMP007', 'Ashish', '', 'MALE', '+91 98222 33445', 'ashish@megafactory.internal', '12 Automation Corridor, Cell 3', 'DEP005', 'Robotics & Automation', 720000, '2023-05-10', 'ACTIVE', 'Robotics & Shop Floor Operator')
+ON CONFLICT (employee_id) DO UPDATE SET
+    first_name = EXCLUDED.first_name,
+    last_name = EXCLUDED.last_name,
+    position = EXCLUDED.position;
 
 INSERT INTO attendance_devices (device_id, device_name, location, device_type, status, last_ping) VALUES
 ('DEV001', 'Gate 1 Turnstile Biometric Scanner', 'Main Entrance Security Gate', 'BIOMETRIC', 'ONLINE', 'Just now'),

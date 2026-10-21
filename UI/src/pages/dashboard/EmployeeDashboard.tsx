@@ -10,7 +10,7 @@ import {
   Clock,
   LogIn,
   LogOut,
-  DollarSign,
+  IndianRupee,
   Play,
   CheckCircle2,
 } from 'lucide-react';
@@ -53,21 +53,21 @@ export const EmployeeDashboard: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Welcome Banner */}
-      <div className="p-6 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-850 to-blue-950/40 border border-slate-800 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="p-6 rounded-2xl bg-gradient-to-r from-white via-white to-blue-50/60 border border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <span className="text-xs font-mono font-bold text-blue-400 uppercase tracking-widest">
+          <span className="text-xs font-mono font-bold text-blue-600 uppercase tracking-widest">
             Plant Floor Operator Workstation
           </span>
-          <h2 className="text-2xl font-bold text-white tracking-tight mt-1">
+          <h2 className="text-2xl font-bold text-slate-100 tracking-tight mt-1">
             Welcome back, {user?.fullName}
           </h2>
           <p className="text-xs text-slate-400 mt-1">
-            Department: <strong className="text-slate-200">{user?.departmentName || 'Machining & Assembly'}</strong> • Role: <strong className="text-slate-200">{user?.position || 'Machinist'}</strong>
+            Department: <strong className="text-slate-100">{user?.departmentName || 'Machining & Assembly'}</strong> • Role: <strong className="text-slate-100">{user?.position || 'Machinist'}</strong>
           </p>
         </div>
 
         {/* Live Attendance Punch Box */}
-        <div className="flex items-center gap-2.5 bg-slate-950/80 p-2.5 rounded-xl border border-slate-800">
+        <div className="flex items-center gap-2.5 bg-slate-950 p-2.5 rounded-xl border border-slate-800 shadow-xs">
           <Button
             variant="emerald"
             size="sm"
@@ -95,7 +95,7 @@ export const EmployeeDashboard: React.FC = () => {
         <StatCard
           title="Assigned Work Orders"
           value={`${myOrders.length} Orders`}
-          icon={<Factory className="w-5 h-5 text-blue-400" />}
+          icon={<Factory className="w-5 h-5 text-blue-600" />}
           subtitle="Precision CNC fabrication batch"
           badge="Active Floor"
           badgeColor="blue"
@@ -103,8 +103,8 @@ export const EmployeeDashboard: React.FC = () => {
 
         <StatCard
           title="Latest Net Salary"
-          value={latestPay ? formatCurrency(latestPay.netSalary) : '$6,130'}
-          icon={<DollarSign className="w-5 h-5 text-emerald-400" />}
+          value={latestPay ? formatCurrency(latestPay.netSalary) : formatCurrency(6130)}
+          icon={<IndianRupee className="w-5 h-5 text-emerald-600" />}
           subtitle="August 2026 Pay Slip"
           badge="Direct Deposit"
           badgeColor="emerald"
@@ -113,7 +113,7 @@ export const EmployeeDashboard: React.FC = () => {
         <StatCard
           title="Assigned Robot Missions"
           value={`${myTasks.length} In Progress`}
-          icon={<Bot className="w-5 h-5 text-indigo-400" />}
+          icon={<Bot className="w-5 h-5 text-indigo-600" />}
           subtitle="Material transfer to cell"
           badge="Autonomous"
           badgeColor="blue"
@@ -123,7 +123,7 @@ export const EmployeeDashboard: React.FC = () => {
       {/* Production Jobs & Robot Tasks Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Assigned Production Work Orders */}
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-xl space-y-4">
+        <div className="rounded-2xl border border-slate-800 bg-white p-5 shadow-sm space-y-4">
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
             <div>
               <h3 className="text-sm font-bold text-slate-100 uppercase tracking-wider">
@@ -143,11 +143,11 @@ export const EmployeeDashboard: React.FC = () => {
                 return (
                   <div
                     key={ord.productionOrderId}
-                    className="p-4 rounded-xl bg-slate-950/60 border border-slate-800 space-y-2.5"
+                    className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2.5 shadow-xs"
                   >
                     <div className="flex items-center justify-between">
                       <div>
-                        <span className="font-mono text-xs text-blue-400 font-bold">{ord.productionOrderId}</span>
+                        <span className="font-mono text-xs text-blue-600 font-bold">{ord.productionOrderId}</span>
                         <h4 className="text-sm font-semibold text-slate-100">{ord.productName}</h4>
                       </div>
                       <StatusBadge status={ord.status} />
@@ -155,13 +155,13 @@ export const EmployeeDashboard: React.FC = () => {
 
                     {/* Progress Meter */}
                     <div className="space-y-1">
-                      <div className="flex justify-between text-xs font-mono text-slate-300">
+                      <div className="flex justify-between text-xs font-mono text-slate-400">
                         <span>Produced: {ord.producedQuantity} / {ord.quantity} units</span>
-                        <span className="text-cyan-400 font-bold">{pct}%</span>
+                        <span className="text-blue-600 font-bold">{pct}%</span>
                       </div>
                       <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
                         <div
-                          className="h-full bg-gradient-to-r from-blue-500 to-cyan-400 rounded-full"
+                          className="h-full bg-gradient-to-r from-blue-600 to-indigo-500 rounded-full"
                           style={{ width: `${Math.min(100, pct)}%` }}
                         />
                       </div>
@@ -174,7 +174,7 @@ export const EmployeeDashboard: React.FC = () => {
         </div>
 
         {/* Assigned AMR Robot Tasks */}
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-xl space-y-4">
+        <div className="rounded-2xl border border-slate-800 bg-white p-5 shadow-sm space-y-4">
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
             <div>
               <h3 className="text-sm font-bold text-slate-100 uppercase tracking-wider">
@@ -191,12 +191,12 @@ export const EmployeeDashboard: React.FC = () => {
               myTasks.map((t) => (
                 <div
                   key={t.taskId}
-                  className="p-4 rounded-xl bg-slate-950/60 border border-slate-800 space-y-2"
+                  className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2 shadow-xs"
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <span className="font-mono text-xs text-indigo-400 font-bold">{t.taskId}</span>
-                      <p className="text-xs font-semibold text-slate-200">
+                      <span className="font-mono text-xs text-indigo-600 font-bold">{t.taskId}</span>
+                      <p className="text-xs font-semibold text-slate-100">
                         {t.productName} ({t.quantity} Units)
                       </p>
                     </div>

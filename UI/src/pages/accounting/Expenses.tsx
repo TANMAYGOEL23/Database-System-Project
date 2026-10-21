@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, CreditCard, DollarSign, Tag, Calendar, FileText, CheckCircle } from 'lucide-react';
+import { Plus, CreditCard, IndianRupee, Tag, Calendar, FileText, CheckCircle } from 'lucide-react';
 import { DataTable, Column, FilterConfig } from '../../components/tables/DataTable';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { Button } from '../../components/ui/Button';
@@ -132,7 +132,7 @@ export const Expenses: React.FC = () => {
     },
     {
       key: 'amount',
-      header: 'Amount Paid ($)',
+      header: 'Amount Paid (₹)',
       sortable: true,
       align: 'right',
       render: (e) => (
@@ -224,7 +224,7 @@ export const Expenses: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Input
-              label="Amount Paid ($)"
+              label="Amount Paid (₹)"
               type="number"
               step="0.01"
               min="1"

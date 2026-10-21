@@ -157,7 +157,7 @@ export const JournalEntries: React.FC = () => {
     },
     {
       key: 'totalDebit',
-      header: 'Total Value ($)',
+      header: 'Total Value (₹)',
       sortable: true,
       align: 'right',
       render: (j) => (
@@ -257,7 +257,7 @@ export const JournalEntries: React.FC = () => {
               </div>
               <div className="sm:col-span-2">
                 <Input
-                  label="Debit ($)"
+                  label="Debit (₹)"
                   type="number"
                   step="0.01"
                   min="0"
@@ -267,7 +267,7 @@ export const JournalEntries: React.FC = () => {
               </div>
               <div className="sm:col-span-2">
                 <Input
-                  label="Credit ($)"
+                  label="Credit (₹)"
                   type="number"
                   step="0.01"
                   min="0"

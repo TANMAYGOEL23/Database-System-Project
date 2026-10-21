@@ -26,7 +26,7 @@ import {
   FileText,
   BookOpen,
   Scale,
-  DollarSign,
+  IndianRupee,
   PieChart,
   LogOut,
   ChevronDown,
@@ -139,7 +139,7 @@ export const Sidebar: React.FC<{
           items: [
             { label: 'Chart of Accounts', path: '/accounting/accounts', icon: <BookOpen className="w-4 h-4" /> },
             { label: 'Journal Entries (Double-Entry)', path: '/accounting/journal-entries', icon: <Scale className="w-4 h-4" /> },
-            { label: 'Operational Expenses', path: '/accounting/expenses', icon: <DollarSign className="w-4 h-4" /> },
+            { label: 'Operational Expenses', path: '/accounting/expenses', icon: <IndianRupee className="w-4 h-4" /> },
           ],
         },
         {
@@ -179,8 +179,8 @@ export const Sidebar: React.FC<{
           </div>
           {isOpen && (
             <div className="flex flex-col min-w-0">
-              <span className="font-bold text-sm tracking-tight text-white truncate">
-                MEGAFACTORY <span className="text-blue-400">ERP</span>
+              <span className="font-bold text-sm tracking-tight text-slate-100 truncate">
+                MEGAFACTORY <span className="text-blue-600">ERP</span>
               </span>
               <span className="text-[10px] font-mono text-slate-400 tracking-wider uppercase">
                 Smart Industrial OS
@@ -191,7 +191,7 @@ export const Sidebar: React.FC<{
 
         <button
           onClick={onToggle}
-          className="hidden lg:flex p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
+          className="hidden lg:flex p-1.5 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors"
           title={isOpen ? 'Collapse Sidebar' : 'Expand Sidebar'}
         >
           <ChevronLeft className={cn('w-4 h-4 transition-transform duration-200', !isOpen && 'rotate-180')} />
@@ -208,7 +208,7 @@ export const Sidebar: React.FC<{
               {isOpen ? (
                 <button
                   onClick={() => toggleSection(section.title)}
-                  className="w-full flex items-center justify-between px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 hover:text-slate-200 transition-colors"
+                  className="w-full flex items-center justify-between px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400 hover:text-slate-100 transition-colors"
                 >
                   <span>{section.title}</span>
                   {isCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
@@ -231,12 +231,12 @@ export const Sidebar: React.FC<{
                         className={cn(
                           'flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-all duration-150 group',
                           isActive
-                            ? 'bg-blue-600 text-white font-semibold shadow-md shadow-blue-600/20'
-                            : 'text-slate-400 hover:text-slate-100 hover:bg-slate-900',
+                            ? 'bg-blue-600 text-white font-semibold shadow-sm shadow-blue-600/30'
+                            : 'text-slate-400 hover:text-slate-100 hover:bg-white',
                           !isOpen && 'justify-center px-2'
                         )}
                       >
-                        <span className={cn('shrink-0 transition-transform group-hover:scale-110', isActive ? 'text-white' : 'text-slate-400 group-hover:text-blue-400')}>
+                        <span className={cn('shrink-0 transition-transform group-hover:scale-110', isActive ? 'text-white' : 'text-slate-400 group-hover:text-blue-600')}>
                           {item.icon}
                         </span>
 
@@ -252,13 +252,13 @@ export const Sidebar: React.FC<{
       </div>
 
       {/* User Footer Profile */}
-      <div className="p-3 border-t border-slate-800 bg-slate-900/60 shrink-0">
+      <div className="p-3 border-t border-slate-800 bg-white/70 shrink-0">
         <div className={cn('flex items-center justify-between', !isOpen && 'justify-center')}>
           <div className="flex items-center gap-2.5 min-w-0">
             {user?.avatarUrl ? (
-              <img src={user.avatarUrl} alt={user.fullName} className="w-8 h-8 rounded-xl object-cover ring-1 ring-slate-700 shrink-0" />
+              <img src={user.avatarUrl} alt={user.fullName} className="w-8 h-8 rounded-xl object-cover ring-1 ring-slate-800 shrink-0" />
             ) : (
-              <div className="w-8 h-8 rounded-xl bg-blue-900/60 text-blue-300 font-bold flex items-center justify-center text-xs shrink-0">
+              <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-700 font-bold border border-blue-200 flex items-center justify-center text-xs shrink-0">
                 {user?.fullName?.charAt(0) || 'U'}
               </div>
             )}
@@ -267,7 +267,7 @@ export const Sidebar: React.FC<{
               <div className="min-w-0">
                 <p className="text-xs font-semibold text-slate-100 truncate">{user?.fullName}</p>
                 <div className="flex items-center gap-1.5 mt-0.5">
-                  <span className={cn('inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-mono font-bold uppercase', isAdmin ? 'bg-blue-500/20 text-blue-400' : 'bg-emerald-500/20 text-emerald-400')}>
+                  <span className={cn('inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-mono font-bold uppercase', isAdmin ? 'bg-blue-50 text-blue-800 border border-blue-200' : 'bg-emerald-50 text-emerald-800 border border-emerald-200')}>
                     {isAdmin ? <Shield className="w-2.5 h-2.5 mr-1" /> : <HardHat className="w-2.5 h-2.5 mr-1" />}
                     {user?.role}
                   </span>
@@ -279,7 +279,7 @@ export const Sidebar: React.FC<{
           {isOpen && (
             <button
               onClick={logout}
-              className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-colors"
+              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
               title="Sign Out"
             >
               <LogOut className="w-4 h-4" />

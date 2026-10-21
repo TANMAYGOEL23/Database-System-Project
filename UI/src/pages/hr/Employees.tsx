@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Users, Search, DollarSign, Calendar, Mail, Phone, MapPin } from 'lucide-react';
+import { Plus, Edit2, Trash2, Users, Search, IndianRupee, Calendar, Mail, Phone, MapPin } from 'lucide-react';
 import { DataTable, Column, FilterConfig } from '../../components/tables/DataTable';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
@@ -217,7 +217,7 @@ export const Employees: React.FC = () => {
     },
     {
       key: 'salary',
-      header: 'Annual Salary ($)',
+      header: 'Annual Salary (₹)',
       sortable: true,
       align: 'right',
       render: (emp) => (
@@ -404,7 +404,7 @@ export const Employees: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Input
-              label="Annual Salary ($)"
+              label="Annual Salary (₹)"
               type="number"
               value={formData.salary}
               onChange={(e) => setFormData({ ...formData, salary: e.target.value })}

@@ -37,13 +37,13 @@ export const MainLayout: React.FC = () => {
       />
 
       {/* Main Viewport */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
+      <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden bg-slate-950">
         <Topbar onMobileMenuToggle={() => setIsMobileOpen(true)} />
 
         {/* Global Breadcrumb Navigation Bar */}
-        <div className="bg-slate-900/40 border-b border-slate-800/80 px-4 sm:px-6 py-2.5 flex items-center gap-1.5 text-xs text-slate-400 select-none">
-          <Link to="/dashboard" className="flex items-center hover:text-slate-200 transition-colors">
-            <Home className="w-3.5 h-3.5 mr-1 text-slate-500" />
+        <div className="bg-white/80 backdrop-blur-xs border-b border-slate-800 px-4 sm:px-6 py-2.5 flex items-center gap-1.5 text-xs text-slate-400 select-none shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
+          <Link to="/dashboard" className="flex items-center hover:text-slate-100 transition-colors">
+            <Home className="w-3.5 h-3.5 mr-1 text-slate-400" />
             <span>Root</span>
           </Link>
 
@@ -51,9 +51,9 @@ export const MainLayout: React.FC = () => {
             <React.Fragment key={bc.path}>
               <ChevronRight className="w-3.5 h-3.5 text-slate-600 shrink-0" />
               {idx === breadcrumbs.length - 1 ? (
-                <span className="font-semibold text-slate-200">{bc.label}</span>
+                <span className="font-semibold text-slate-100">{bc.label}</span>
               ) : (
-                <Link to={bc.path} className="hover:text-slate-200 transition-colors">
+                <Link to={bc.path} className="hover:text-slate-100 transition-colors">
                   {bc.label}
                 </Link>
               )}

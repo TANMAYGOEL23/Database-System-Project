@@ -175,7 +175,7 @@ export const PurchaseOrders: React.FC = () => {
     },
     {
       key: 'totalAmount',
-      header: 'Total PO Value ($)',
+      header: 'Total PO Value (₹)',
       sortable: true,
       align: 'right',
       render: (p) => (
