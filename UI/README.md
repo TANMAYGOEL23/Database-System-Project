@@ -105,11 +105,28 @@ npm run build
 
 ---
 
-## 🔑 Demo Credentials
+## Google sign-in
 
-| Role | Username | Password | Features |
-| :--- | :--- | :--- | :--- |
-| **ADMIN** | `admin` | `password123` | Complete ERP system access, CRUD, accounting, and reports |
-| **EMPLOYEE** | `operator` | `password123` | Personal dashboard, attendance punch, pay slips, assigned jobs |
+Google OAuth through Supabase is the only sign-in method. Password and demo login have been removed.
 
-*(Quick one-click demo login buttons are also provided on the login page.)*
+| Person | Google account | Existing role |
+| :--- | :--- | :--- |
+| Tanmay | prishaajit@gmail.com | ADMIN |
+| Rohit | rohitchaurasiya143265@gmail.com | EMPLOYEE |
+| Ashish | ashishchoudhary29006@gmail.com | EMPLOYEE |
+
+Copy .env.example to .env and set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY using the project's public URL and publishable key. Never prefix a secret/service key with VITE_. The application verifies the Google identity and loads the role and employee profile from the users table. Unlinked, inactive, and suspended users are denied access. Reloads revalidate the session instead of trusting a cached role.
+
+Enable Google in Supabase Authentication providers. In Google's OAuth client, register the Supabase callback URL (https://YOUR_PROJECT.supabase.co/auth/v1/callback). In Supabase Authentication URL Configuration, allow http://localhost:3000/auth/callback, http://127.0.0.1:3000/auth/callback, and the deployed application's callback URL.
+
+For an existing database, apply ../database/migrations/20261028_google_accounts.sql through the SQL editor, or set SUPABASE_URL and SUPABASE_SECRET_KEY locally and run node scripts/link-google-accounts.mjs to review the changes, then node scripts/link-google-accounts.mjs --apply. The administrative script preserves the current named user's role and employee link and reuses existing email aliases. It never exposes the secret key to the browser.
+
+Run npm test for authentication checks and npm run build for the production build. With the dev server running, node scripts/check-google-signin.mjs tests the login UI, real Google redirect, and callback/dashboard/session behavior using explicit test responses in isolated headless Chrome. The account owner must complete Google's account selection and consent for a full live sign-in.
+
+## Promoting employees to admin
+
+Admins can open **HR → Employees** and choose **Make admin** beside an employee. The confirmation names the linked sign-in accounts and explains the access being granted. Success updates the workspace role in the list. The promoted employee receives the admin dashboard when they next reload or sign in.
+
+For an existing Supabase installation, run [the admin promotion migration](../database/migrations/20261028_employee_admin_promotion.sql) in the SQL editor. Both complete schema files already include it for fresh installations. This migration is required before the button can work: it creates the protected promotion function, removes public writes to user accounts, permits employees to read only their own account, and records each promotion in `user_role_audit`. Only a signed-in active admin can promote accounts; the browser never receives a service key. Terminated employees and employees without an active linked sign-in account cannot be promoted.
+
+`npm test` includes PostgreSQL permission and audit checks through PGlite. The Chrome script also checks confirmation, cancellation, promotion, failure handling, persistence, and denial of employee access to this admin page using test responses. These tests do not change live employee roles.

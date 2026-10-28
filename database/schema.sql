@@ -409,16 +409,12 @@ CREATE TABLE IF NOT EXISTS expenses (
 -- ==============================================================================
 -- 9. SEED INITIAL BASE DATA (OPTIONAL / READY TO USE)
 -- ==============================================================================
-INSERT INTO users (user_id, employee_id, username, role, status, full_name, email, department_name, position, password_hash) VALUES
-('USR001', 'EMP001', 'tanmay', 'ADMIN', 'ACTIVE', 'Tanmay Goel', 'tanmay.goel@megafactory.internal', 'Executive Operations', 'Owner & Chief Executive Officer', 'cf28d56f01623c011bf817b6cbc103fc0eff415f446ac1fb05baf76e633bb016'),
-('USR002', 'EMP004', 'rohit', 'EMPLOYEE', 'ACTIVE', 'Rohit Chaurasiya', 'rohit.chaurasiya@megafactory.internal', 'Machining & Assembly', 'Lead CNC & Plant Operations Specialist', '24dbc360c0cca645fd2fb879cb7c8d8eb39076b475ae88cbd6268d3334575c5a'),
-('USR003', 'EMP007', 'ashish', 'EMPLOYEE', 'ACTIVE', 'Ashish', 'ashish@megafactory.internal', 'Robotics & Automation', 'Robotics & Shop Floor Operator', 'e8448f4ad3a81317413dacac54909ea3dc2b8112265d9a87f562d2abbe162c0a'),
-('USR004', 'EMP001', 'admin', 'ADMIN', 'ACTIVE', 'Tanmay Goel', 'admin@megafactory.internal', 'Executive Operations', 'Owner & Chief Executive Officer', 'cf28d56f01623c011bf817b6cbc103fc0eff415f446ac1fb05baf76e633bb016'),
-('USR005', 'EMP004', 'operator', 'EMPLOYEE', 'ACTIVE', 'Rohit Chaurasiya', 'operator@megafactory.internal', 'Machining & Assembly', 'Lead CNC & Plant Operations Specialist', '24dbc360c0cca645fd2fb879cb7c8d8eb39076b475ae88cbd6268d3334575c5a')
-ON CONFLICT (username) DO UPDATE SET 
-    full_name = EXCLUDED.full_name,
-    password_hash = EXCLUDED.password_hash,
-    position = EXCLUDED.position;
+
+INSERT INTO users (user_id, employee_id, username, role, status, full_name, email, department_name, position) VALUES
+('USR001', 'EMP001', 'tanmay', 'ADMIN', 'ACTIVE', 'Tanmay Goel', 'prishaajit@gmail.com', 'Executive Operations', 'Owner & Chief Executive Officer'),
+('USR002', 'EMP002', 'rohit', 'EMPLOYEE', 'ACTIVE', 'Rohit Chaurasiya', 'rohitchaurasiya143265@gmail.com', 'Machining & Assembly', 'Lead CNC & Plant Operations Specialist'),
+('USR003', 'EMP003', 'ashish', 'EMPLOYEE', 'ACTIVE', 'Ashish', 'ashishchoudhary29006@gmail.com', 'Robotics & Automation', 'Robotics & Shop Floor Operator')
+ON CONFLICT (username) DO NOTHING;
 
 INSERT INTO departments (department_id, department_name, manager_id, manager_name, employee_count, location) VALUES
 ('DEP001', 'Executive Operations', 'EMP001', 'Tanmay Goel', 4, 'Building A, Floor 3'),
@@ -646,3 +642,108 @@ BEGIN
     DROP POLICY IF EXISTS "Allow public read-write for dev on expenses" ON expenses;
     CREATE POLICY "Allow public read-write for dev on expenses" ON expenses FOR ALL USING (true) WITH CHECK (true);
 END $$;
+
+-- ADMIN-ONLY EMPLOYEE PROMOTION
+-- Admin-only employee promotion. Apply once to an existing Supabase project.
+BEGIN;
+
+CREATE OR REPLACE FUNCTION public.is_erp_admin()
+RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = ''
+AS $$
+    SELECT auth.uid() IS NOT NULL AND EXISTS (
+        SELECT 1 FROM public.users AS account
+        WHERE lower(account.email) = lower(auth.jwt() ->> 'email')
+          AND account.role = 'ADMIN' AND account.status = 'ACTIVE'
+    );
+$$;
+REVOKE ALL ON FUNCTION public.is_erp_admin() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.is_erp_admin() TO authenticated;
+
+-- Prevent direct role edits, including requests that bypass the application UI.
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public read-write for dev on users" ON public.users;
+DROP POLICY IF EXISTS "Read own account or administer users" ON public.users;
+CREATE POLICY "Read own account or administer users" ON public.users
+    FOR SELECT TO authenticated USING (
+        lower(email) = lower(auth.jwt() ->> 'email') OR public.is_erp_admin()
+    );
+REVOKE ALL ON public.users FROM PUBLIC, anon, authenticated;
+GRANT SELECT ON public.users TO authenticated;
+
+CREATE TABLE IF NOT EXISTS public.user_role_audit (
+    audit_id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id text NOT NULL,
+    employee_id text NOT NULL,
+    changed_by_user_id text NOT NULL,
+    changed_by_auth_id uuid NOT NULL,
+    old_role text NOT NULL,
+    new_role text NOT NULL,
+    changed_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.user_role_audit ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.user_role_audit FROM PUBLIC, anon, authenticated;
+GRANT SELECT ON public.user_role_audit TO authenticated;
+DROP POLICY IF EXISTS "Admins read role history" ON public.user_role_audit;
+CREATE POLICY "Admins read role history" ON public.user_role_audit
+    FOR SELECT TO authenticated USING (public.is_erp_admin());
+
+CREATE OR REPLACE FUNCTION public.promote_employee_to_admin(p_employee_id text)
+RETURNS SETOF public.users
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $$
+DECLARE
+    actor_id text;
+    employment_status text;
+BEGIN
+    IF auth.uid() IS NULL THEN
+        RAISE EXCEPTION 'Sign in as an administrator to manage workspace access.' USING ERRCODE = '42501';
+    END IF;
+    SELECT account.user_id INTO actor_id FROM public.users AS account
+    WHERE lower(account.email) = lower(auth.jwt() ->> 'email')
+      AND account.role = 'ADMIN' AND account.status = 'ACTIVE'
+    FOR SHARE;
+    IF actor_id IS NULL THEN
+        RAISE EXCEPTION 'Only active administrators can grant admin access.' USING ERRCODE = '42501';
+    END IF;
+    -- Serialize concurrent promotions of the same employee.
+    SELECT employee.status INTO employment_status FROM public.employees AS employee
+    WHERE employee.employee_id = p_employee_id FOR UPDATE;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Employee record not found.' USING ERRCODE = 'P0002';
+    END IF;
+    IF employment_status = 'TERMINATED' THEN
+        RAISE EXCEPTION 'A terminated employee cannot receive admin access.' USING ERRCODE = '22023';
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM public.users AS account
+        WHERE account.employee_id = p_employee_id AND account.status = 'ACTIVE'
+    ) THEN
+        RAISE EXCEPTION 'This employee needs an active linked sign-in account before receiving admin access.' USING ERRCODE = '22023';
+    END IF;
+
+    RETURN QUERY
+    WITH promoted AS (
+        UPDATE public.users AS account SET role = 'ADMIN'
+        WHERE account.employee_id = p_employee_id AND account.status = 'ACTIVE' AND account.role = 'EMPLOYEE'
+        RETURNING account.*
+    ), logged AS (
+        INSERT INTO public.user_role_audit
+            (user_id, employee_id, changed_by_user_id, changed_by_auth_id, old_role, new_role)
+        SELECT account.user_id, account.employee_id, actor_id, auth.uid(), 'EMPLOYEE', 'ADMIN'
+        FROM promoted AS account
+    )
+    SELECT account.* FROM promoted AS account;
+
+    IF NOT FOUND THEN
+        -- Repeated requests are safe and do not create duplicate audit entries.
+        RETURN QUERY SELECT account.* FROM public.users AS account
+        WHERE account.employee_id = p_employee_id AND account.status = 'ACTIVE' AND account.role = 'ADMIN';
+    END IF;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.promote_employee_to_admin(text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.promote_employee_to_admin(text) TO authenticated;
+
+NOTIFY pgrst, 'reload schema';
+COMMIT;

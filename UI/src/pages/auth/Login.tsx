@@ -16,7 +16,7 @@ import {
   RefreshCw,
   ExternalLink,
 } from 'lucide-react';
-import { testSupabaseConnection, getSupabaseConfig } from '../../services/supabase';
+import { testSupabaseConnection, getSupabaseConfig, isSupabaseConfigured, supabase } from '../../services/supabase';
 
 const GoogleIcon: React.FC = () => (
   <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24">
@@ -57,23 +57,32 @@ export const Login: React.FC = () => {
     message: 'Testing connection...',
   });
 
-  const { login, loginWithGoogle } = useAuth();
-  const { showToast } = useNotification();
+  const { login } = useAuth();
+  const { showNotification } = useNotification();
   const navigate = useNavigate();
   const location = useLocation();
 
   const from = (location.state as any)?.from?.pathname || '/dashboard';
 
   const checkConnection = async () => {
-    setSupabaseStatus((prev) => ({ ...prev, loading: true }));
-    const result = await testSupabaseConnection();
-    setSupabaseStatus({
-      loading: false,
-      connected: result.connected,
-      message: result.message,
-      projectId: result.projectId,
-      usersCount: result.usersCount,
-    });
+    setSupabaseStatus({ loading: true, connected: false, message: 'Testing Supabase connection...' });
+    try {
+      const res = await testSupabaseConnection();
+      const cfg = getSupabaseConfig();
+      setSupabaseStatus({
+        loading: false,
+        connected: res.success,
+        message: res.message,
+        projectId: cfg.projectId || undefined,
+        usersCount: res.usersCount,
+      });
+    } catch (err: any) {
+      setSupabaseStatus({
+        loading: false,
+        connected: false,
+        message: err.message || 'Connection check failed',
+      });
+    }
   };
 
   useEffect(() => {
@@ -83,234 +92,219 @@ export const Login: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username.trim() || !password.trim()) {
-      showToast('error', 'Validation Error', 'Please enter username and password');
+      showNotification('Please enter both username/email and password', 'error');
       return;
     }
 
+    setIsSubmitting(true);
     try {
-      setIsSubmitting(true);
-      const success = await login({ username, password });
-      if (success) {
-        showToast('success', 'Security Authorized', `Logged in as ${username.toUpperCase()}`);
+      const result = await login(username.trim(), password);
+      if (result.success) {
+        showNotification(result.message || 'Login successful!', 'success');
         navigate(from, { replace: true });
       } else {
-        showToast('error', 'Authentication Failed', 'Invalid credentials or user not active');
+        showNotification(result.message || 'Invalid credentials', 'error');
       }
     } catch (err: any) {
-      showToast('error', 'Login Error', err.message || 'Server connection error');
+      showNotification(err.message || 'An error occurred during login', 'error');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleGoogleLogin = async () => {
+    if (!isSupabaseConfigured()) {
+      showNotification('Supabase is not configured. Google sign-in is unavailable.', 'error');
+      return;
+    }
+
+    setIsGoogleLoading(true);
     try {
-      setIsGoogleLoading(true);
-      await loginWithGoogle();
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin + '/dashboard',
+        },
+      });
+      if (error) throw error;
     } catch (err: any) {
-      showToast(
-        'error',
-        'Google Auth Notice',
-        err.message || 'Please enable Google provider in your Supabase Dashboard.'
-      );
-    } finally {
+      showNotification(err.message || 'Google authentication failed', 'error');
       setIsGoogleLoading(false);
     }
   };
 
-  const handleDemoSelect = (userType: 'tanmay' | 'rohit' | 'ashish') => {
-    if (userType === 'tanmay') {
+  const fillDemoAccount = (userType: 'admin' | 'hr' | 'operator') => {
+    if (userType === 'admin') {
       setUsername('tanmay');
       setPassword('Tanmay@2026');
-    } else if (userType === 'rohit') {
-      setUsername('rohit');
-      setPassword('Rohit@2026');
+    } else if (userType === 'hr') {
+      setUsername('hr_manager');
+      setPassword('Password123!');
     } else {
-      setUsername('ashish');
-      setPassword('Ashish@2026');
+      setUsername('operator1');
+      setPassword('Password123!');
     }
   };
 
-  const config = getSupabaseConfig();
-
   return (
-    <div className="min-h-screen w-screen bg-[#faf8f5] flex flex-col justify-center items-center p-4 relative overflow-hidden">
-      {/* Background industrial circuit grid overlay */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#e8e4dc_1px,transparent_1px),linear-gradient(to_bottom,#e8e4dc_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] pointer-events-none opacity-60" />
+    <div className="min-h-screen bg-slate-950 flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">
+      {/* Background ambient lighting */}
+      <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="w-full max-w-md relative z-10 space-y-6">
-        {/* Brand Header */}
-        <div className="text-center space-y-2">
-          <div className="inline-flex p-3 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white shadow-xl shadow-blue-500/20 ring-1 ring-blue-500/30">
-            <Factory className="w-8 h-8" />
+      <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10">
+        <div className="flex justify-center">
+          <div className="w-16 h-16 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-xl shadow-blue-500/20 border border-blue-400/30">
+            <Factory className="w-8 h-8 text-white animate-pulse" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-100">
-            Smart Industrial <span className="text-blue-600">ERP</span>
-          </h1>
-          <p className="text-xs text-slate-400">
-            PostgreSQL & Supabase Connected Enterprise Management System
-          </p>
         </div>
+        <h2 className="mt-6 text-center text-3xl font-extrabold tracking-tight text-white">
+          Smart ERP & Factory
+        </h2>
+        <p className="mt-2 text-center text-sm text-slate-400">
+          Database Systems & Industrial Management Portal
+        </p>
+      </div>
 
-        {/* Live Supabase Connection Status Card */}
-        <div
-          className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl border text-xs font-mono transition-all ${
-            supabaseStatus.loading
-              ? 'bg-white border-slate-800 text-slate-400 shadow-xs'
-              : supabaseStatus.connected
-              ? 'bg-emerald-50 border-emerald-200 text-emerald-800 shadow-xs'
-              : 'bg-amber-50 border-amber-200 text-amber-800 shadow-xs'
-          }`}
-        >
-          <div className="flex items-center gap-2 truncate">
-            {supabaseStatus.loading ? (
-              <RefreshCw className="w-3.5 h-3.5 animate-spin text-blue-600 shrink-0" />
-            ) : supabaseStatus.connected ? (
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-            ) : (
-              <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-            )}
-            <span className="truncate">
-              {supabaseStatus.loading
-                ? 'Testing Supabase connection...'
-                : supabaseStatus.connected
-                ? `Supabase: Connected (${supabaseStatus.projectId || 'Live'})`
-                : `Supabase: Disconnected (${supabaseStatus.message})`}
-            </span>
-          </div>
-
-          <button
-            type="button"
-            onClick={checkConnection}
-            title="Refresh connection status"
-            className="p-1 rounded hover:bg-slate-800/40 text-slate-400 hover:text-slate-100 transition-colors shrink-0 ml-2"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${supabaseStatus.loading ? 'animate-spin' : ''}`} />
-          </button>
-        </div>
-
-        {/* Login Form Container */}
-        <div className="bg-white border border-slate-800 rounded-2xl p-6 shadow-xl shadow-stone-200/50 space-y-5">
-          {/* Google OAuth Login Button */}
-          <div>
-            <Button
-              variant="outline"
-              size="lg"
-              type="button"
-              onClick={handleGoogleLogin}
-              isLoading={isGoogleLoading}
-              className="w-full flex items-center justify-center font-semibold border-slate-800 bg-white hover:bg-slate-950 text-slate-100 shadow-xs"
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10 px-4 sm:px-0">
+        <div className="bg-slate-900/80 backdrop-xl py-8 px-4 shadow-2xl sm:rounded-2xl sm:px-10 border border-slate-800 shadow-black/50">
+          
+          {/* Supabase Connection Status Banner */}
+          <div className="mb-6 p-3 rounded-xl bg-slate-800/60 border border-slate-700/60 text-xs flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              {supabaseStatus.loading ? (
+                <RefreshCw className="w-4 h-4 text-amber-400 animate-spin" />
+              ) : supabaseStatus.connected ? (
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              ) : (
+                <AlertCircle className="w-4 h-4 text-rose-400" />
+              )}
+              <span className="text-slate-300 font-medium">
+                {supabaseStatus.loading
+                  ? 'Connecting to Supabase...'
+                  : supabaseStatus.connected
+                  ? `Connected ${supabaseStatus.projectId ? `(${supabaseStatus.projectId})` : ''}`
+                  : 'Database Offline / Local Mode'}
+              </span>
+            </div>
+            <button
+              onClick={checkConnection}
+              title="Refresh Connection"
+              className="text-slate-400 hover:text-white transition-colors"
             >
-              <GoogleIcon />
-              Continue with Google
-            </Button>
+              <RefreshCw className="w-3.5 h-3.5" />
+            </button>
+          </div>
 
-            <div className="relative my-4">
+          <form className="space-y-5" onSubmit={handleSubmit}>
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+                Username or Email
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+                  <User className="w-4 h-4" />
+                </div>
+                <Input
+                  type="text"
+                  required
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="pl-10 bg-slate-950/60 border-slate-800 text-white placeholder-slate-500 focus:border-blue-500 focus:ring-blue-500"
+                  placeholder="Enter username or email"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+                Password
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+                  <Lock className="w-4 h-4" />
+                </div>
+                <Input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="pl-10 bg-slate-950/60 border-slate-800 text-white placeholder-slate-500 focus:border-blue-500 focus:ring-blue-500"
+                  placeholder="••••••••"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-medium py-2.5 rounded-xl shadow-lg shadow-blue-600/25 transition-all duration-200"
+              >
+                {isSubmitting ? 'Authenticating...' : 'Sign In'}
+              </Button>
+            </div>
+          </form>
+
+          <div className="mt-6">
+            <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-slate-800" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-white px-3 text-slate-400 font-mono">
-                  or sign in with password
+                <span className="bg-slate-900 px-2 text-slate-500 font-semibold tracking-wider">
+                  Or continue with
                 </span>
               </div>
             </div>
+
+            <div className="mt-6">
+              <Button
+                type="button"
+                onClick={handleGoogleLogin}
+                disabled={isGoogleLoading}
+                variant="outline"
+                className="w-full bg-slate-950/40 border-slate-800 text-slate-200 hover:bg-slate-800 hover:text-white py-2.5 rounded-xl transition-all flex items-center justify-center font-medium"
+              >
+                <GoogleIcon />
+                {isGoogleLoading ? 'Connecting...' : 'Sign in with Google'}
+              </Button>
+            </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <Input
-              label="Username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="e.g. tanmay, rohit, or ashish"
-              leftIcon={<User className="w-4 h-4" />}
-              required
-            />
-
-            <Input
-              label="Password (SHA-256 Encrypted)"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••••••"
-              leftIcon={<Lock className="w-4 h-4" />}
-              required
-            />
-
-            <Button
-              variant="primary"
-              size="lg"
-              type="submit"
-              className="w-full mt-2"
-              isLoading={isSubmitting}
-            >
-              Sign In to Industrial Workspace
-            </Button>
-          </form>
-
-          {/* 1-Click User Switcher Presets */}
-          <div className="pt-4 border-t border-slate-800 space-y-2.5">
-            <div className="flex items-center justify-between">
-              <p className="text-[11px] font-mono font-medium text-slate-400 uppercase tracking-wider">
-                1-Click Fast Login
-              </p>
-              <span className="text-[10px] font-mono bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded border border-emerald-200">
-                SHA-256 Secured
-              </span>
-            </div>
-
+          {/* Quick Demo Credentials Selector */}
+          <div className="mt-8 pt-6 border-t border-slate-800/80">
+            <p className="text-xs font-medium text-slate-400 mb-3 text-center">
+              Quick Demo Access:
+            </p>
             <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
-                onClick={() => handleDemoSelect('tanmay')}
-                className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-xs font-semibold transition-all ${
-                  username === 'tanmay' || username === 'admin'
-                    ? 'bg-blue-50 border-blue-500 text-blue-900 shadow-xs'
-                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-100 hover:bg-slate-850'
-                }`}
+                onClick={() => fillDemoAccount('admin')}
+                className="px-2 py-1.5 text-xs bg-slate-800/80 hover:bg-blue-600/20 hover:border-blue-500/50 border border-slate-700/60 rounded-lg text-slate-300 hover:text-white transition-all flex flex-col items-center gap-1"
               >
-                <Shield className="w-4 h-4 text-blue-600 mb-1" />
-                <span className="font-bold text-slate-100 text-[11px]">Tanmay Goel</span>
-                <span className="text-[10px] text-blue-600 font-mono">Owner / Admin</span>
+                <Shield className="w-3.5 h-3.5 text-blue-400" />
+                <span>Admin</span>
               </button>
-
               <button
                 type="button"
-                onClick={() => handleDemoSelect('rohit')}
-                className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-xs font-semibold transition-all ${
-                  username === 'rohit' || username === 'operator'
-                    ? 'bg-emerald-50 border-emerald-500 text-emerald-900 shadow-xs'
-                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-100 hover:bg-slate-850'
-                }`}
+                onClick={() => fillDemoAccount('hr')}
+                className="px-2 py-1.5 text-xs bg-slate-800/80 hover:bg-emerald-600/20 hover:border-emerald-500/50 border border-slate-700/60 rounded-lg text-slate-300 hover:text-white transition-all flex flex-col items-center gap-1"
               >
-                <HardHat className="w-4 h-4 text-emerald-600 mb-1" />
-                <span className="font-bold text-slate-100 text-[11px]">Rohit C.</span>
-                <span className="text-[10px] text-emerald-600 font-mono">Operator 1</span>
+                <User className="w-3.5 h-3.5 text-emerald-400" />
+                <span>HR Manager</span>
               </button>
-
               <button
                 type="button"
-                onClick={() => handleDemoSelect('ashish')}
-                className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-xs font-semibold transition-all ${
-                  username === 'ashish'
-                    ? 'bg-purple-50 border-purple-500 text-purple-900 shadow-xs'
-                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-100 hover:bg-slate-850'
-                }`}
+                onClick={() => fillDemoAccount('operator')}
+                className="px-2 py-1.5 text-xs bg-slate-800/80 hover:bg-amber-600/20 hover:border-amber-500/50 border border-slate-700/60 rounded-lg text-slate-300 hover:text-white transition-all flex flex-col items-center gap-1"
               >
-                <Cpu className="w-4 h-4 text-purple-600 mb-1" />
-                <span className="font-bold text-slate-100 text-[11px]">Ashish</span>
-                <span className="text-[10px] text-purple-600 font-mono">Operator 2</span>
+                <HardHat className="w-3.5 h-3.5 text-amber-400" />
+                <span>Operator</span>
               </button>
             </div>
           </div>
-        </div>
 
-        {/* Footer Database Notice */}
-        <div className="text-center space-y-1">
-          <p className="text-[11px] text-slate-500 font-mono flex items-center justify-center gap-1.5">
-            <Cpu className="w-3.5 h-3.5 text-blue-400" />
-            Project: <strong className="text-slate-400">{config.projectId || 'khypyudvethxwhshrwjl'}</strong> • Supabase PostgreSQL
-          </p>
         </div>
       </div>
     </div>

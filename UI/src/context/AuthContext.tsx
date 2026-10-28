@@ -1,7 +1,7 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, LoginRequest, AuthContextType } from '../types/auth';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { User, AuthContextType, LoginResponse } from '../types/auth';
 import { authService } from '../services/authService';
-import { supabase, isSupabaseConfigured } from '../services/supabase';
+import { isSupabaseConfigured, supabase } from '../services/supabase';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -69,156 +69,95 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         let appUser: User;
         if (dbUser) {
-          const role = (isAdmin || dbUser.role === 'ADMIN') ? 'ADMIN' : (dbUser.role || 'EMPLOYEE');
           appUser = {
-            userId: dbUser.user_id || dbUser.userId,
-            employeeId: dbUser.employee_id || dbUser.employeeId || 'EMP-OAUTH',
-            username: dbUser.username,
-            role,
-            status: dbUser.status || 'ACTIVE',
-            fullName: dbUser.full_name || fullName,
+            id: dbUser.id,
             email: dbUser.email,
-            departmentName: isAdmin ? 'Executive Operations' : (dbUser.department_name || 'Executive Operations'),
-            position: isAdmin ? 'Owner & Chief Executive Officer' : (dbUser.position || 'Operations Specialist'),
+            username: dbUser.username || fullName,
+            fullName: dbUser.full_name || fullName,
+            role: isAdmin ? 'ADMIN' : (dbUser.role || 'EMPLOYEE'),
+            departmentName: dbUser.department_name || (isAdmin ? 'Executive Operations' : 'General'),
+            position: dbUser.position || (isAdmin ? 'Owner & Chief Executive Officer' : 'Staff'),
             avatarUrl: dbUser.avatar_url || avatarUrl,
           };
-
-          // If designated Admin was stored as EMPLOYEE, update in Supabase
-          if (isAdmin && dbUser.role !== 'ADMIN') {
-            await supabase
-              .from('users')
-              .update({
-                role: 'ADMIN',
-                department_name: 'Executive Operations',
-                position: 'Owner & Chief Executive Officer'
-              })
-              .ilike('email', email);
-          }
         } else {
-          // Provision user profile in users table
-          const newUserId = `USR-${Math.floor(100 + Math.random() * 900)}`;
-          const newEmployeeId = `EMP-${Math.floor(100 + Math.random() * 900)}`;
-          const username =
-            email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '').toLowerCase() ||
-            `user_${Date.now()}`;
-
-          const newUserRecord = {
-            user_id: newUserId,
-            employee_id: newEmployeeId,
-            username,
-            role: isAdmin ? 'ADMIN' : 'EMPLOYEE',
-            status: 'ACTIVE',
-            full_name: fullName,
-            email,
-            department_name: isAdmin ? 'Executive Operations' : 'Shop Floor Operations',
-            position: isAdmin ? 'Owner & Chief Executive Officer' : 'Plant Technician',
-            avatar_url: avatarUrl,
-          };
-
-          await supabase.from('users').upsert([newUserRecord], { onConflict: 'email' });
-
           appUser = {
-            userId: newUserId,
-            employeeId: newEmployeeId,
-            username,
+            id: session.user.id,
+            email: email,
+            username: session.user.user_metadata?.user_name || fullName,
+            fullName: fullName,
             role: isAdmin ? 'ADMIN' : 'EMPLOYEE',
-            status: 'ACTIVE',
-            fullName,
-            email,
-            departmentName: newUserRecord.department_name,
-            position: newUserRecord.position,
-            avatarUrl,
+            departmentName: isAdmin ? 'Executive Operations' : 'General',
+            position: isAdmin ? 'Owner & Chief Executive Officer' : 'Staff',
+            avatarUrl: avatarUrl,
           };
         }
 
         setUser(appUser);
         setToken(session.access_token);
-        localStorage.setItem('smart_erp_token', session.access_token);
         localStorage.setItem('smart_erp_user', JSON.stringify(appUser));
+        localStorage.setItem('smart_erp_token', session.access_token);
       } catch (err) {
-        console.error('Error syncing Supabase user profile:', err);
+        console.error('Error syncing Supabase session:', err);
       }
     };
 
-    // Check initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        syncSession(session);
-      }
+      if (session) syncSession(session);
     });
 
-    // Listen to OAuth sign-ins & token changes
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
         syncSession(session);
       }
     });
 
     return () => {
-      authListener?.subscription?.unsubscribe();
+      subscription.unsubscribe();
     };
   }, []);
 
-  const login = async (credentials: LoginRequest): Promise<boolean> => {
-    try {
-      setIsLoading(true);
-      const res = await authService.login(credentials);
-      setUser(res.user);
-      setToken(res.token);
-      localStorage.setItem('smart_erp_token', res.token);
-      localStorage.setItem('smart_erp_user', JSON.stringify(res.user));
-      return true;
-    } catch (err) {
-      console.error('Login error', err);
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const loginWithGoogle = async (): Promise<void> => {
+  const login = async (emailOrUsername: string, pass: string): Promise<LoginResponse> => {
     setIsLoading(true);
     try {
-      const { error } = await authService.signInWithGoogle();
-      if (error) {
-        throw error;
+      const res = await authService.login(emailOrUsername, pass);
+      if (res.success && res.user && res.token) {
+        let loggedUser = res.user;
+        if (isUserAdmin(loggedUser.email, loggedUser.username)) {
+          loggedUser.role = 'ADMIN';
+          loggedUser.departmentName = loggedUser.departmentName || 'Executive Operations';
+          loggedUser.position = loggedUser.position || 'Owner & Chief Executive Officer';
+        }
+        setUser(loggedUser);
+        setToken(res.token);
+        localStorage.setItem('smart_erp_user', JSON.stringify(loggedUser));
+        localStorage.setItem('smart_erp_token', res.token);
       }
+      return res;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const logout = () => {
-    authService.logout();
+  const logout = useCallback(() => {
     setUser(null);
     setToken(null);
-    localStorage.removeItem('smart_erp_token');
     localStorage.removeItem('smart_erp_user');
-  };
-
-  const isAdmin = user?.role === 'ADMIN' || isUserAdmin(user?.email, user?.username);
-  const isEmployee = user?.role === 'EMPLOYEE' && !isAdmin;
+    localStorage.removeItem('smart_erp_token');
+    if (isSupabaseConfigured()) {
+      supabase.auth.signOut().catch(() => {});
+    }
+  }, []);
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        token,
-        isAuthenticated: !!user && !!token,
-        isLoading,
-        login,
-        loginWithGoogle,
-        logout,
-        isAdmin,
-        isEmployee,
-      }}
-    >
+    <AuthContext.Provider value={{ user, token, isAuthenticated: !!user, login, logout, isLoading }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-export const useAuth = (): AuthContextType => {
+export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');

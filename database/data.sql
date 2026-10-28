@@ -106,7 +106,7 @@ VALUES
         'ashishchoudhary29006@gmail.com',
         'google',
         NULL,
-        'ADMIN',
+        'EMPLOYEE',
         'ACTIVE'
     ),
     (
@@ -115,12 +115,12 @@ VALUES
         'prishaajit@gmail.com',
         'google',
         NULL,
-        'EMPLOYEE',
+        'ADMIN',
         'ACTIVE'
     ),
     (
         3,
-        4,
+        2,
         'rohitchaurasiya143265@gmail.com',
         'google',
         NULL,

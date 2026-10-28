@@ -16,12 +16,6 @@ export interface User {
   passwordHash?: string;
 }
 
-export interface LoginRequest {
-  username: string;
-  passwordHash?: string;
-  password?: string;
-}
-
 export interface LoginResponse {
   token: string;
   user: User;
@@ -33,7 +27,6 @@ export interface AuthContextType {
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (credentials: LoginRequest) => Promise<boolean>;
   loginWithGoogle: () => Promise<void>;
   logout: () => void;
   isAdmin: boolean;
