@@ -5,12 +5,14 @@ import { Button } from '../../components/ui/Button';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { SimulateAttendanceModal } from '../../components/simulation/SimulateAttendanceModal';
 import { useNotification } from '../../context/NotificationContext';
+import { useAuth } from '../../context/AuthContext';
 import { attendanceService } from '../../services/attendanceService';
 import { departmentService } from '../../services/departmentService';
 import { AttendanceRecord, Department } from '../../types/hr';
 import { formatDate } from '../../utils/formatters';
 
 export const Attendance: React.FC = () => {
+  const { user, isAdmin } = useAuth();
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -112,13 +114,21 @@ export const Attendance: React.FC = () => {
     },
   ];
 
+  const displayedRecords = isAdmin
+    ? records
+    : records.filter((a) => a.employeeId === user?.employeeId);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-white tracking-tight">Gate Turnstile & Biometric Attendance</h2>
+          <h2 className="text-2xl font-bold text-white tracking-tight">
+            {isAdmin ? 'Gate Turnstile & Biometric Attendance' : 'My Gate Attendance Punch Records'}
+          </h2>
           <p className="text-xs text-slate-400 mt-1">
-            Real-time optical and RFID turnstile punch ledger stored inside PostgreSQL ATTENDANCE table.
+            {isAdmin
+              ? 'Real-time optical and RFID turnstile punch ledger stored inside PostgreSQL ATTENDANCE table.'
+              : 'Personal biometric turnstile and RFID entry punch audit log.'}
           </p>
         </div>
 
@@ -131,31 +141,35 @@ export const Attendance: React.FC = () => {
             Refresh
           </Button>
 
-          <Button
-            variant="primary"
-            onClick={() => setIsSimulateOpen(true)}
-            leftIcon={<Fingerprint className="w-4 h-4" />}
-          >
-            Simulate Gate Punch
-          </Button>
+          {isAdmin && (
+            <Button
+              variant="primary"
+              onClick={() => setIsSimulateOpen(true)}
+              leftIcon={<Fingerprint className="w-4 h-4" />}
+            >
+              Simulate Gate Punch
+            </Button>
+          )}
         </div>
       </div>
 
       <DataTable
-        data={records}
+        data={displayedRecords}
         columns={columns}
         rowKey={(a) => a.attendanceId}
         searchKey={(a) => `${a.attendanceId} ${a.employeeName} ${a.employeeId} ${a.departmentName}`}
-        searchPlaceholder="Search attendance by employee, ID, department..."
+        searchPlaceholder={isAdmin ? 'Search attendance by employee, ID, department...' : 'Search your attendance records...'}
         filters={filters}
         isLoading={isLoading}
       />
 
-      <SimulateAttendanceModal
-        isOpen={isSimulateOpen}
-        onClose={() => setIsSimulateOpen(false)}
-        onSuccess={loadData}
-      />
+      {isAdmin && (
+        <SimulateAttendanceModal
+          isOpen={isSimulateOpen}
+          onClose={() => setIsSimulateOpen(false)}
+          onSuccess={loadData}
+        />
+      )}
     </div>
   );
 };

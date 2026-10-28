@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Users, ShieldCheck } from 'lucide-react';
+import { Plus, Edit2, Trash2, Users } from 'lucide-react';
 import { DataTable, Column, FilterConfig } from '../../components/tables/DataTable';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
@@ -10,8 +10,6 @@ import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useNotification } from '../../context/NotificationContext';
 import { employeeService } from '../../services/employeeService';
 import { departmentService } from '../../services/departmentService';
-import { employeeAccessService, EmployeeAccountAccess } from '../../services/employeeAccessService';
-import { useAuth } from '../../context/AuthContext';
 import { Employee, Department, EmployeeGender, EmployeeStatus } from '../../types/hr';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 
@@ -19,11 +17,6 @@ export const Employees: React.FC = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [accounts, setAccounts] = useState<EmployeeAccountAccess[]>([]);
-  const [accessError, setAccessError] = useState(false);
-  const [promotionTarget, setPromotionTarget] = useState<Employee | null>(null);
-  const [isPromoting, setIsPromoting] = useState(false);
-  const { isAdmin } = useAuth();
 
   // Modals state
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -60,15 +53,6 @@ export const Employees: React.FC = () => {
       ]);
       setEmployees(empList);
       setDepartments(deptList);
-      if (isAdmin) {
-        try {
-          setAccounts(await employeeAccessService.getAccounts());
-          setAccessError(false);
-        } catch (error: any) {
-          setAccessError(true);
-          showToast('error', 'Access Details Unavailable', error.message);
-        }
-      }
       if (deptList.length > 0 && !formData.departmentId) {
         setFormData((prev) => ({ ...prev, departmentId: deptList[0].departmentId }));
       }
@@ -197,28 +181,6 @@ export const Employees: React.FC = () => {
     }
   };
 
-  const activeAccounts = (employeeId: string) => accounts.filter(
-    (account) => account.employeeId === employeeId && account.status === 'ACTIVE'
-  );
-
-  const handleMakeAdmin = async () => {
-    if (!isAdmin || !promotionTarget || isPromoting) return;
-    try {
-      setIsPromoting(true);
-      const promoted = await employeeAccessService.makeAdmin(promotionTarget.employeeId);
-      setAccounts((previous) => [
-        ...previous.filter((account) => !promoted.some((updated) => updated.userId === account.userId)),
-        ...promoted,
-      ]);
-      showToast('success', 'Admin Access Granted', `${promotionTarget.fullName || promotionTarget.firstName} now has full workspace access. Their new role applies when they next sign in or reload.`);
-      setPromotionTarget(null);
-    } catch (error: any) {
-      showToast('error', 'Could Not Grant Admin Access', error.message);
-    } finally {
-      setIsPromoting(false);
-    }
-  };
-
   const columns: Column<Employee>[] = [
     {
       key: 'employeeId',
@@ -275,36 +237,6 @@ export const Employees: React.FC = () => {
       header: 'Status',
       sortable: true,
       render: (emp) => <StatusBadge status={emp.status} />,
-    },
-    {
-      key: 'workspaceRole',
-      header: 'Workspace Access',
-      render: (emp) => {
-        if (accessError) return <span className="text-xs text-amber-400">Access unavailable</span>;
-        const linked = activeAccounts(emp.employeeId);
-        if (linked.some((account) => account.role === 'ADMIN')) {
-          return <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-300"><ShieldCheck className="w-4 h-4" />Admin</span>;
-        }
-        if (linked.length) return (
-          <div className="space-y-2">
-            <span className="text-xs text-slate-300">Employee</span>
-            {isAdmin && emp.status !== 'TERMINATED' && (
-              <Button
-                variant="secondary"
-                size="sm"
-                className="whitespace-nowrap"
-                onClick={() => setPromotionTarget(emp)}
-                disabled={isPromoting}
-                leftIcon={<ShieldCheck className="w-3.5 h-3.5" />}
-                aria-label={`Make ${emp.fullName || emp.firstName} an admin`}
-              >
-                Make admin
-              </Button>
-            )}
-          </div>
-        );
-        return <span className="text-xs text-slate-500">No active sign-in account</span>;
-      },
     },
     {
       key: 'actions',
@@ -511,17 +443,6 @@ export const Employees: React.FC = () => {
       </Modal>
 
       {/* Delete Confirmation Dialog */}
-      <ConfirmDialog
-        isOpen={!!promotionTarget}
-        onClose={() => { if (!isPromoting) setPromotionTarget(null); }}
-        onConfirm={handleMakeAdmin}
-        title="Grant admin access?"
-        message={`${promotionTarget?.fullName || promotionTarget?.firstName} will get full access to employee records, payroll, inventory, reports, and the ability to promote other employees. Linked accounts: ${promotionTarget ? activeAccounts(promotionTarget.employeeId).map((account) => account.email).join(', ') : ''}.`}
-        confirmText="Make admin"
-        variant="primary"
-        isLoading={isPromoting}
-      />
-
       <ConfirmDialog
         isOpen={isDeleteOpen}
         onClose={() => setIsDeleteOpen(false)}

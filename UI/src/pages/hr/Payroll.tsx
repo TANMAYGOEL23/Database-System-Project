@@ -7,12 +7,14 @@ import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useNotification } from '../../context/NotificationContext';
+import { useAuth } from '../../context/AuthContext';
 import { payrollService } from '../../services/payrollService';
 import { employeeService } from '../../services/employeeService';
 import { Payroll, Employee } from '../../types/hr';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 
 export const PayrollPage: React.FC = () => {
+  const { user, isAdmin } = useAuth();
   const [payrolls, setPayrolls] = useState<Payroll[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -179,44 +181,55 @@ export const PayrollPage: React.FC = () => {
     },
   ];
 
+  const displayedPayrolls = isAdmin
+    ? payrolls
+    : payrolls.filter((p) => p.employeeId === user?.employeeId);
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-white tracking-tight">Workforce Payroll & Compensation</h2>
+          <h2 className="text-2xl font-bold text-white tracking-tight">
+            {isAdmin ? 'Workforce Payroll & Compensation' : 'My Compensation & Pay Slips'}
+          </h2>
           <p className="text-xs text-slate-400 mt-1">
-            Calculate statutory withholdings, performance bonuses, net disbursements, and generate pay slips.
+            {isAdmin
+              ? 'Calculate statutory withholdings, performance bonuses, net disbursements, and generate pay slips.'
+              : 'Personal monthly salary statements, withholdings, and take-home pay.'}
           </p>
         </div>
 
-        <Button
-          variant="primary"
-          onClick={handleOpenGenerate}
-          leftIcon={<Plus className="w-4 h-4" />}
-        >
-          Generate Pay Slip
-        </Button>
+        {isAdmin && (
+          <Button
+            variant="primary"
+            onClick={handleOpenGenerate}
+            leftIcon={<Plus className="w-4 h-4" />}
+          >
+            Generate Pay Slip
+          </Button>
+        )}
       </div>
 
       <DataTable
-        data={payrolls}
+        data={displayedPayrolls}
         columns={columns}
         rowKey={(p) => p.payrollId}
         searchKey={(p) => `${p.payrollId} ${p.employeeName} ${p.employeeId} ${p.departmentName}`}
-        searchPlaceholder="Search payroll records..."
+        searchPlaceholder={isAdmin ? 'Search payroll records...' : 'Search your pay slips...'}
         filters={filters}
         isLoading={isLoading}
       />
 
-      {/* Generate Payroll Modal */}
-      <Modal
-        isOpen={isGenerateOpen}
-        onClose={() => setIsGenerateOpen(false)}
-        title="Generate Monthly Pay Slip"
-        subtitle="PostgreSQL PAYROLL relational calculation"
-        maxWidth="md"
-        icon={<Receipt className="w-5 h-5 text-blue-400" />}
-      >
+      {/* Generate Payroll Modal (ADMIN ONLY) */}
+      {isAdmin && (
+        <Modal
+          isOpen={isGenerateOpen}
+          onClose={() => setIsGenerateOpen(false)}
+          title="Generate Monthly Pay Slip"
+          subtitle="PostgreSQL PAYROLL relational calculation"
+          maxWidth="md"
+          icon={<Receipt className="w-5 h-5 text-blue-400" />}
+        >
         <form onSubmit={handleGenerateSubmit} className="space-y-4">
           <Select
             label="Target Employee"
@@ -278,6 +291,7 @@ export const PayrollPage: React.FC = () => {
           </div>
         </form>
       </Modal>
+      )}
 
       {/* Pay Slip View Modal */}
       {selectedPayroll && (

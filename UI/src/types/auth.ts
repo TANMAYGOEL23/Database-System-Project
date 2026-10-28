@@ -4,7 +4,7 @@ export type UserStatus = 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
 
 export interface User {
   userId: string;
-  employeeId: string;
+  employeeId?: string;
   username: string;
   role: UserRole;
   status: UserStatus;

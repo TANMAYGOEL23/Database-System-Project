@@ -13,6 +13,7 @@ import { NotFound } from '../pages/auth/NotFound';
 import { DashboardRouter } from '../pages/dashboard/DashboardRouter';
 
 // HR
+import { UsersPage } from '../pages/hr/UsersPage';
 import { Employees } from '../pages/hr/Employees';
 import { Departments } from '../pages/hr/Departments';
 import { Attendance } from '../pages/hr/Attendance';
@@ -68,55 +69,63 @@ export const AppRoutes: React.FC = () => {
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardRouter />} />
 
-          {/* Admin Protected HR */}
-          <Route element={<ProtectedRoute requiredRole="ADMIN" />}>
-            <Route path="/hr/employees" element={<Employees />} />
-          </Route>
-          <Route path="/hr/departments" element={<Departments />} />
-          <Route path="/hr/attendance" element={<Attendance />} />
-          <Route path="/hr/payroll" element={<Payroll />} />
-
-          {/* Admin Protected Inventory */}
-          <Route path="/inventory/products" element={<Products />} />
-          <Route path="/inventory/stock" element={<StockMatrix />} />
-          <Route path="/inventory/warehouses" element={<Warehouses />} />
-          <Route path="/inventory/shelves" element={<Shelves />} />
-          <Route path="/inventory/suppliers" element={<Suppliers />} />
-          <Route path="/inventory/purchase-orders" element={<PurchaseOrders />} />
-          <Route path="/inventory/transactions" element={<StockTransactions />} />
-
-          {/* Manufacturing */}
-          <Route path="/production/machines" element={<Machines />} />
-          <Route path="/production/orders" element={<ProductionOrders />} />
-          <Route path="/production/logs" element={<ProductionLogs />} />
-
-          {/* Warehouse Robotics */}
-          <Route path="/warehouse/robots" element={<Robots />} />
-          <Route path="/warehouse/robot-tasks" element={<RobotTasks />} />
-
-          {/* IoT Telemetry */}
-          <Route path="/iot/sensors" element={<Sensors />} />
-          <Route path="/iot/data" element={<SensorDataPage />} />
-          <Route path="/iot/alerts" element={<Alerts />} />
-
-          {/* Sales & Commercial */}
-          <Route path="/sales/customers" element={<Customers />} />
-          <Route path="/sales/invoices" element={<Invoices />} />
-
-          {/* Finance & GL */}
-          <Route path="/accounting/accounts" element={<Accounts />} />
-          <Route path="/accounting/journal-entries" element={<JournalEntries />} />
-          <Route path="/accounting/expenses" element={<Expenses />} />
-
-          {/* BI Analytics & Reports */}
-          <Route path="/reports" element={<ReportsHub />} />
-
-          {/* Employee Specialized Shortcuts */}
+          {/* Employee Self-Service Shortcuts */}
           <Route path="/employee/attendance" element={<Attendance />} />
           <Route path="/employee/payroll" element={<Payroll />} />
-          <Route path="/employee/production-tasks" element={<ProductionOrders />} />
-          <Route path="/employee/robot-tasks" element={<RobotTasks />} />
-          <Route path="/employee/alerts" element={<Alerts />} />
+
+          {/* Legacy Employee Floor Routes Redirect to /dashboard */}
+          <Route path="/employee/production-tasks" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/employee/robot-tasks" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/employee/alerts" element={<Navigate to="/dashboard" replace />} />
+
+          {/* Legacy Users Aliases Redirect to /hr/users */}
+          <Route path="/admin/users" element={<Navigate to="/hr/users" replace />} />
+          <Route path="/users" element={<Navigate to="/hr/users" replace />} />
+
+          {/* Admin Protected Factory Operational Routes */}
+          <Route element={<ProtectedRoute requiredRole="ADMIN" />}>
+            {/* HR Operations */}
+            <Route path="/hr/users" element={<UsersPage />} />
+            <Route path="/hr/employees" element={<Employees />} />
+            <Route path="/hr/departments" element={<Departments />} />
+            <Route path="/hr/attendance" element={<Attendance />} />
+            <Route path="/hr/payroll" element={<Payroll />} />
+
+            {/* Inventory & Supply Chain */}
+            <Route path="/inventory/products" element={<Products />} />
+            <Route path="/inventory/stock" element={<StockMatrix />} />
+            <Route path="/inventory/warehouses" element={<Warehouses />} />
+            <Route path="/inventory/shelves" element={<Shelves />} />
+            <Route path="/inventory/suppliers" element={<Suppliers />} />
+            <Route path="/inventory/purchase-orders" element={<PurchaseOrders />} />
+            <Route path="/inventory/transactions" element={<StockTransactions />} />
+
+            {/* Manufacturing */}
+            <Route path="/production/machines" element={<Machines />} />
+            <Route path="/production/orders" element={<ProductionOrders />} />
+            <Route path="/production/logs" element={<ProductionLogs />} />
+
+            {/* Warehouse Robotics */}
+            <Route path="/warehouse/robots" element={<Robots />} />
+            <Route path="/warehouse/robot-tasks" element={<RobotTasks />} />
+
+            {/* IoT Telemetry */}
+            <Route path="/iot/sensors" element={<Sensors />} />
+            <Route path="/iot/data" element={<SensorDataPage />} />
+            <Route path="/iot/alerts" element={<Alerts />} />
+
+            {/* Sales & Commercial */}
+            <Route path="/sales/customers" element={<Customers />} />
+            <Route path="/sales/invoices" element={<Invoices />} />
+
+            {/* Finance & GL */}
+            <Route path="/accounting/accounts" element={<Accounts />} />
+            <Route path="/accounting/journal-entries" element={<JournalEntries />} />
+            <Route path="/accounting/expenses" element={<Expenses />} />
+
+            {/* BI Analytics & Reports */}
+            <Route path="/reports" element={<ReportsHub />} />
+          </Route>
         </Route>
       </Route>
 

@@ -85,41 +85,43 @@ export const Topbar: React.FC<{
 
       {/* Right Section: Hardware Simulation Triggers & Notifications */}
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* Simulation Shortcut Buttons (Prominent in topbar) */}
-        <div className="flex items-center gap-1.5 bg-slate-900/90 border border-slate-800 p-1 rounded-xl">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsAttendanceModalOpen(true)}
-            leftIcon={<Fingerprint className="w-3.5 h-3.5 text-blue-400" />}
-            className="text-xs px-2.5 py-1 text-slate-300 hover:text-white"
-            title="Simulate Employee Turnstile / RFID Punch"
-          >
-            <span className="hidden md:inline">Simulate Attendance</span>
-          </Button>
+        {/* Simulation Shortcut Buttons (Prominent in topbar - ADMIN ONLY) */}
+        {isAdmin && (
+          <div className="flex items-center gap-1.5 bg-slate-900/90 border border-slate-800 p-1 rounded-xl">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsAttendanceModalOpen(true)}
+              leftIcon={<Fingerprint className="w-3.5 h-3.5 text-blue-400" />}
+              className="text-xs px-2.5 py-1 text-slate-300 hover:text-white"
+              title="Simulate Employee Turnstile / RFID Punch"
+            >
+              <span className="hidden md:inline">Simulate Attendance</span>
+            </Button>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsSensorModalOpen(true)}
-            leftIcon={<Activity className="w-3.5 h-3.5 text-cyan-400" />}
-            className="text-xs px-2.5 py-1 text-slate-300 hover:text-white"
-            title="Inject Sensor Reading Packet"
-          >
-            <span className="hidden md:inline">Simulate Sensor</span>
-          </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsSensorModalOpen(true)}
+              leftIcon={<Activity className="w-3.5 h-3.5 text-cyan-400" />}
+              className="text-xs px-2.5 py-1 text-slate-300 hover:text-white"
+              title="Inject Sensor Reading Packet"
+            >
+              <span className="hidden md:inline">Simulate Sensor</span>
+            </Button>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsRobotModalOpen(true)}
-            leftIcon={<Bot className="w-3.5 h-3.5 text-indigo-400" />}
-            className="text-xs px-2.5 py-1 text-slate-300 hover:text-white"
-            title="Dispatch AMR / AGV Warehouse Mission"
-          >
-            <span className="hidden md:inline">Dispatch AGV</span>
-          </Button>
-        </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsRobotModalOpen(true)}
+              leftIcon={<Bot className="w-3.5 h-3.5 text-indigo-400" />}
+              className="text-xs px-2.5 py-1 text-slate-300 hover:text-white"
+              title="Dispatch AMR / AGV Warehouse Mission"
+            >
+              <span className="hidden md:inline">Dispatch AGV</span>
+            </Button>
+          </div>
+        )}
 
         {/* Notifications & Active Incident Alerts Dropdown */}
         <div className="relative">
@@ -194,19 +196,23 @@ export const Topbar: React.FC<{
         </div>
       </div>
 
-      {/* Simulation Dialogs Mounted Globally */}
-      <SimulateAttendanceModal
-        isOpen={isAttendanceModalOpen}
-        onClose={() => setIsAttendanceModalOpen(false)}
-      />
-      <SimulateSensorModal
-        isOpen={isSensorModalOpen}
-        onClose={() => setIsSensorModalOpen(false)}
-      />
-      <SimulateRobotTaskModal
-        isOpen={isRobotModalOpen}
-        onClose={() => setIsRobotModalOpen(false)}
-      />
+      {/* Simulation Dialogs Mounted Globally (ADMIN ONLY) */}
+      {isAdmin && (
+        <>
+          <SimulateAttendanceModal
+            isOpen={isAttendanceModalOpen}
+            onClose={() => setIsAttendanceModalOpen(false)}
+          />
+          <SimulateSensorModal
+            isOpen={isSensorModalOpen}
+            onClose={() => setIsSensorModalOpen(false)}
+          />
+          <SimulateRobotTaskModal
+            isOpen={isRobotModalOpen}
+            onClose={() => setIsRobotModalOpen(false)}
+          />
+        </>
+      )}
     </header>
   );
 };

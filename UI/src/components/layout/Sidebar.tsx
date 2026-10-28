@@ -80,6 +80,7 @@ export const Sidebar: React.FC<{
           title: 'Human Resources (HR)',
           adminOnly: true,
           items: [
+            { label: 'Users', path: '/hr/users', icon: <UserCheck className="w-4 h-4 text-blue-400" /> },
             { label: 'Employees', path: '/hr/employees', icon: <Users className="w-4 h-4" /> },
             { label: 'Departments', path: '/hr/departments', icon: <Building2 className="w-4 h-4" /> },
             { label: 'Attendance Ledger', path: '/hr/attendance', icon: <CalendarCheck className="w-4 h-4" /> },
@@ -152,19 +153,11 @@ export const Sidebar: React.FC<{
       ]
     : [
         {
-          title: 'My Workstation',
+          title: 'Employee Portal',
           items: [
             { label: 'My Personal Dashboard', path: '/dashboard', icon: <LayoutDashboard className="w-4 h-4" /> },
             { label: 'My Attendance Punch', path: '/employee/attendance', icon: <CalendarCheck className="w-4 h-4" /> },
-            { label: 'My Payroll & Slips', path: '/employee/payroll', icon: <Receipt className="w-4 h-4" /> },
-          ],
-        },
-        {
-          title: 'Assigned Plant Floor Jobs',
-          items: [
-            { label: 'Assigned Production Work Orders', path: '/employee/production-tasks', icon: <Factory className="w-4 h-4" /> },
-            { label: 'Assigned AMR Robot Tasks', path: '/employee/robot-tasks', icon: <Bot className="w-4 h-4" /> },
-            { label: 'Factory Safety Notices', path: '/employee/alerts', icon: <BellRing className="w-4 h-4" /> },
+            { label: 'My Payroll Slips', path: '/employee/payroll', icon: <Receipt className="w-4 h-4" /> },
           ],
         },
       ];
