@@ -19,7 +19,8 @@ export const AuthCallback: React.FC = () => {
     const params = new URLSearchParams(window.location.search);
     const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
     const oauthError =
-      params.get('error_description') || hashParams.get('error_description');
+      params.get('error_description') || hashParams.get('error_description') ||
+      params.get('error') || hashParams.get('error');
 
     if (oauthError) {
       setError(oauthError);
@@ -31,7 +32,9 @@ export const AuthCallback: React.FC = () => {
     completeOAuthLogin()
       .then((user) => {
         showToast('success', 'Security Authorized', `Signed in with Google as ${user.fullName}`);
-        navigate('/dashboard', { replace: true });
+        const destination = sessionStorage.getItem('smart_erp_return_to');
+        sessionStorage.removeItem('smart_erp_return_to');
+        navigate(destination?.startsWith('/') && !destination.startsWith('//') ? destination : '/dashboard', { replace: true });
       })
       .catch((err: any) => {
         const msg = err?.message || 'Unable to complete Google sign-in';

@@ -69,7 +69,9 @@ export const AppRoutes: React.FC = () => {
           <Route path="/dashboard" element={<DashboardRouter />} />
 
           {/* Admin Protected HR */}
-          <Route path="/hr/employees" element={<Employees />} />
+          <Route element={<ProtectedRoute requiredRole="ADMIN" />}>
+            <Route path="/hr/employees" element={<Employees />} />
+          </Route>
           <Route path="/hr/departments" element={<Departments />} />
           <Route path="/hr/attendance" element={<Attendance />} />
           <Route path="/hr/payroll" element={<Payroll />} />
