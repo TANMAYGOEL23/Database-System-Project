@@ -12,35 +12,68 @@ export const AuthCallback: React.FC = () => {
   const handled = useRef(false);
 
   useEffect(() => {
-    // Guard against React StrictMode double-invocation
+    // Guard against React StrictMode double-invocation in development
     if (handled.current) return;
     handled.current = true;
 
     const params = new URLSearchParams(window.location.search);
     const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+
+    // 1. Handle OAuth provider errors returned in query or hash
     const oauthError =
-      params.get('error_description') || hashParams.get('error_description') ||
-      params.get('error') || hashParams.get('error');
+      params.get('error_description') ||
+      hashParams.get('error_description') ||
+      params.get('error') ||
+      hashParams.get('error');
 
     if (oauthError) {
+      if (window.history && window.history.replaceState) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
       setError(oauthError);
       showToast('error', 'Google Sign-In Failed', oauthError);
-      setTimeout(() => navigate('/login', { replace: true }), 2500);
+      setTimeout(() => navigate('/login', { replace: true }), 3500);
       return;
     }
 
-    completeOAuthLogin()
+    const code = params.get('code');
+
+    // 2. Prevent duplicate code exchanges across StrictMode remounts
+    if (code) {
+      const lockKey = `smart_erp_pkce_${code}`;
+      if (sessionStorage.getItem(lockKey)) {
+        return;
+      }
+      sessionStorage.setItem(lockKey, 'pending');
+    }
+
+    // 3. Complete authentication (exchanging code if present or using detected session)
+    completeOAuthLogin(code)
       .then((user) => {
+        if (code) {
+          sessionStorage.removeItem(`smart_erp_pkce_${code}`);
+        }
+        // Remove code and sensitive parameters from browser history
+        if (window.history && window.history.replaceState) {
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
         showToast('success', 'Security Authorized', `Signed in with Google as ${user.fullName}`);
         const destination = sessionStorage.getItem('smart_erp_return_to');
         sessionStorage.removeItem('smart_erp_return_to');
-        navigate(destination?.startsWith('/') && !destination.startsWith('//') ? destination : '/dashboard', { replace: true });
+        const target = destination?.startsWith('/') && !destination.startsWith('//') ? destination : '/dashboard';
+        navigate(target, { replace: true });
       })
       .catch((err: any) => {
+        if (code) {
+          sessionStorage.removeItem(`smart_erp_pkce_${code}`);
+        }
+        if (window.history && window.history.replaceState) {
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
         const msg = err?.message || 'Unable to complete Google sign-in';
         setError(msg);
         showToast('error', 'Access Denied', msg);
-        setTimeout(() => navigate('/login', { replace: true }), 2500);
+        setTimeout(() => navigate('/login', { replace: true }), 3500);
       });
   }, [completeOAuthLogin, navigate, showToast]);
 

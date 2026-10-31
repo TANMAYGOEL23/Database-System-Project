@@ -1,0 +1,10 @@
+{
+  "buildCommand": "npm --prefix UI run build",
+  "outputDirectory": "UI/dist",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

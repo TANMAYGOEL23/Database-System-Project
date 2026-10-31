@@ -8,7 +8,10 @@ import { join } from 'node:path';
 import { once } from 'node:events';
 
 const origin = process.env.TEST_ORIGIN || 'http://localhost:3000';
-const chromePath = process.env.CHROME_PATH || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+const defaultChrome = process.platform === 'darwin'
+  ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+  : 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+const chromePath = process.env.CHROME_PATH || defaultChrome;
 const profile = mkdtempSync(join(tmpdir(), 'erp-auth-check-'));
 const chrome = spawn(chromePath, [
   '--headless=new', '--disable-gpu', '--no-first-run', '--no-default-browser-check',

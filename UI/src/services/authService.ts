@@ -16,21 +16,60 @@ export const authService = {
     if (error) throw error;
   },
 
-  async completeOAuthLogin(): Promise<LoginResponse> {
+  async completeOAuthLogin(authCode?: string | null): Promise<LoginResponse> {
     if (!isSupabaseConfigured()) {
       throw new Error('Google sign-in is unavailable. Contact your administrator.');
     }
-    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError) throw sessionError;
-    const session = sessionData.session;
-    if (!session) throw new Error('Google sign-in did not return a valid session');
 
-    // Validate the identity with Supabase rather than trusting cached user data.
+    let session: any = null;
+
+    // 1. If an auth code is present, attempt code exchange for session (PKCE)
+    if (authCode && typeof (supabase.auth as any).exchangeCodeForSession === 'function') {
+      try {
+        const { data: exchangeData, error: exchangeError } =
+          await supabase.auth.exchangeCodeForSession(authCode);
+        if (!exchangeError && exchangeData?.session) {
+          session = exchangeData.session;
+        } else if (exchangeError) {
+          // If already exchanged by auto-detection or another listener, check getSession
+          const { data: fallbackData } = await supabase.auth.getSession();
+          if (fallbackData?.session) {
+            session = fallbackData.session;
+          } else {
+            throw new Error(exchangeError.message || 'Unable to exchange authorization code for session');
+          }
+        }
+      } catch (err: any) {
+        // Fallback to getSession before failing
+        const { data: fallbackData } = await supabase.auth.getSession();
+        if (fallbackData?.session) {
+          session = fallbackData.session;
+        } else {
+          throw err;
+        }
+      }
+    }
+
+    // 2. If no session yet, retrieve active session from Supabase
+    if (!session) {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      session = sessionData?.session;
+    }
+
+    if (!session) {
+      throw new Error('Google sign-in did not return a valid session');
+    }
+
+    // 3. Validate the identity with Supabase rather than trusting cached user data.
     const { data: identity, error: identityError } = await supabase.auth.getUser();
     if (identityError) throw identityError;
     const googleUser = identity.user;
-    if (!googleUser?.email || !googleUser.email_confirmed_at ||
-        !googleUser.identities?.some((item) => item.provider === 'google')) {
+    const isGoogle =
+      googleUser?.app_metadata?.provider === 'google' ||
+      googleUser?.identities?.some((item: any) => item.provider === 'google');
+
+    if (!googleUser?.email || !googleUser.email_confirmed_at || !isGoogle) {
       await authService.logout();
       throw new Error('Sign in with a verified Google account.');
     }
@@ -54,7 +93,7 @@ export const authService = {
     const meta = googleUser.user_metadata || {};
     const user: User = {
       userId: String(data.user_id),
-      employeeId: String(data.employee_id),
+      employeeId: String(data.employee_id || ''),
       username: data.username,
       role: data.role,
       status: data.status,

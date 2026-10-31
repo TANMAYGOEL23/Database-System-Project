@@ -1,4 +1,10 @@
 {
+  "name": "smart-industrial-erp-root",
+  "private": true,
+  "scripts": {
+    "build": "npm --prefix UI run build",
+    "dev": "npm --prefix UI run dev"
+  },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.0"
   }

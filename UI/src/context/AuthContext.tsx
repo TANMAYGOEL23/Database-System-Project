@@ -6,9 +6,18 @@ import { isSupabaseConfigured, supabase } from '../services/supabase';
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Every reload validates the Google session and reloads the database role.
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
+  // Initialize from localStorage if present so page reloads do not flicker unauthenticated
+  const [user, setUser] = useState<User | null>(() => {
+    try {
+      const stored = localStorage.getItem('smart_erp_user');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [token, setToken] = useState<string | null>(() => {
+    return localStorage.getItem('smart_erp_token');
+  });
   const [isLoading, setIsLoading] = useState(true);
 
   const clearUser = useCallback(() => {
@@ -26,7 +35,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   useEffect(() => {
-    clearUser();
     if (!isSupabaseConfigured()) {
       setIsLoading(false);
       return;
@@ -43,7 +51,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       // The callback page completes PKCE login itself. Supabase methods must run
       // outside this listener so they do not contend with its session lock.
-      if (window.location.pathname === '/auth/callback') return;
+      if (window.location.pathname === '/auth/callback') {
+        setIsLoading(false);
+        return;
+      }
       setIsLoading(true);
       const timer = setTimeout(() => {
         timers.delete(timer);
@@ -63,10 +74,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loginWithGoogle = useCallback(() => authService.signInWithGoogle(), []);
 
-  const completeOAuthLogin = useCallback(async (): Promise<User> => {
+  const completeOAuthLogin = useCallback(async (authCode?: string | null): Promise<User> => {
     setIsLoading(true);
     try {
-      const res = await authService.completeOAuthLogin();
+      const res = await authService.completeOAuthLogin(authCode);
       saveSession(res);
       return res.user;
     } catch (error) {

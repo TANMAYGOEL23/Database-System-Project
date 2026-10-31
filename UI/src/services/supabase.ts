@@ -1,7 +1,17 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = (import.meta as any).env?.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || '';
+// Read environment variables with defensive normalization
+let rawUrl = ((import.meta as any).env?.VITE_SUPABASE_URL || '').trim();
+// Auto-correct common typographical mismatch if present (shryjl vs shrwjl)
+if (rawUrl.includes('khypyudvethxwhshryjl.supabase.co')) {
+  rawUrl = rawUrl.replace('khypyudvethxwhshryjl.supabase.co', 'khypyudvethxwhshrwjl.supabase.co');
+}
+const supabaseUrl = rawUrl;
+
+const supabaseAnonKey =
+  (import.meta as any).env?.VITE_SUPABASE_ANON_KEY ||
+  (import.meta as any).env?.VITE_SUPABASE_PUBLISHABLE_KEY ||
+  '';
 
 export const isSupabaseConfigured = (): boolean => {
   return (
@@ -23,6 +33,7 @@ export const supabase = createClient(
       detectSessionInUrl: true,
       persistSession: true,
       autoRefreshToken: true,
+      storage: typeof window !== 'undefined' ? window.localStorage : undefined,
     },
   }
 );

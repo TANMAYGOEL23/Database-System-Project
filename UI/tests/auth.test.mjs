@@ -23,6 +23,11 @@ function fixture(options = {}) {
   const supabase = {
     auth: {
       signInWithOAuth: async (args) => { calls.push(['oauth', args]); return { error: options.oauthError }; },
+      exchangeCodeForSession: async (code) => {
+        calls.push(['exchange-code', code]);
+        if (options.exchangeError) return { data: { session: null }, error: options.exchangeError };
+        return { data: { session: options.noSession ? null : { access_token: 'real-google-jwt', expires_in: 3600 } }, error: null };
+      },
       getSession: async () => ({
         data: { session: options.noSession ? null : { access_token: 'real-google-jwt', expires_in: 3600 } },
         error: options.sessionError,
@@ -58,6 +63,21 @@ test('Google sign-in uses PKCE callback and account selection', async () => {
   assert.equal(calls[0][1].options.redirectTo, 'http://localhost:3000/auth/callback');
   assert.equal(calls[0][1].options.queryParams.prompt, 'select_account');
   assert.equal(service.login, undefined, 'password/demo login is removed');
+});
+
+test('completeOAuthLogin exchanges PKCE authorization code when provided', async () => {
+  const { service, calls } = fixture();
+  const response = await service.completeOAuthLogin('test-auth-code-123');
+  assert.ok(calls.some(([method, val]) => method === 'exchange-code' && val === 'test-auth-code-123'));
+  assert.equal(response.token, 'real-google-jwt');
+  assert.equal(response.user.email, 'prishaajit@gmail.com');
+});
+
+test('completeOAuthLogin falls back to getSession if code exchange reports already used', async () => {
+  const { service, calls } = fixture({ exchangeError: new Error('Auth code already used') });
+  const response = await service.completeOAuthLogin('already-used-code');
+  assert.ok(calls.some(([method]) => method === 'exchange-code'));
+  assert.equal(response.token, 'real-google-jwt');
 });
 
 for (const [name, account] of [
