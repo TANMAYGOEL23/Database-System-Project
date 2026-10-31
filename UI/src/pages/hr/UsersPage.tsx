@@ -86,6 +86,22 @@ export const UsersPage: React.FC = () => {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  /**
+   * True when the given account belongs to the currently signed-in admin.
+   * Admins may not change their own role/status or revoke themselves —
+   * they can only manage other users.
+   */
+  const isSelfUser = (target?: User | null): boolean => {
+    if (!target || !currentAuthUser) return false;
+    if (target.userId && currentAuthUser.userId && target.userId === currentAuthUser.userId) return true;
+    return (
+      Boolean(target.email && currentAuthUser.email) &&
+      target.email.trim().toLowerCase() === currentAuthUser.email.trim().toLowerCase()
+    );
+  };
+
+  const isEditingSelf = isSelfUser(selectedUser);
+
   const loadData = async () => {
     try {
       setIsLoading(true);
@@ -219,12 +235,14 @@ export const UsersPage: React.FC = () => {
 
     try {
       setIsSubmitting(true);
+      const editingSelf = isSelfUser(selectedUser);
       await userService.update(selectedUser.userId, {
         email: formData.email.trim().toLowerCase(),
         fullName: formData.fullName.trim(),
         username: formData.username.trim().toLowerCase(),
-        role: formData.role,
-        status: formData.status,
+        // Admins cannot change their own role or status
+        role: editingSelf ? selectedUser.role : formData.role,
+        status: editingSelf ? selectedUser.status : formData.status,
         departmentName: formData.departmentName.trim(),
         position: formData.position.trim(),
         employeeId: formData.employeeId || '',
@@ -241,6 +259,10 @@ export const UsersPage: React.FC = () => {
   };
 
   const handleToggleRole = async (targetUser: User) => {
+    if (isSelfUser(targetUser)) {
+      showToast('error', 'Action Not Allowed', 'You cannot change your own role. Ask another admin to do it.');
+      return;
+    }
     const newRole: UserRole = targetUser.role === 'ADMIN' ? 'EMPLOYEE' : 'ADMIN';
     const roleLabel = newRole === 'ADMIN' ? 'Administrator (Full Access)' : 'Employee (Portal Only)';
 
@@ -262,6 +284,11 @@ export const UsersPage: React.FC = () => {
 
   const handleDeleteConfirm = async () => {
     if (!selectedUser) return;
+    if (isSelfUser(selectedUser)) {
+      showToast('error', 'Action Not Allowed', 'You cannot revoke your own account.');
+      setIsDeleteOpen(false);
+      return;
+    }
     try {
       setIsSubmitting(true);
       await userService.delete(selectedUser.userId);
@@ -335,6 +362,36 @@ export const UsersPage: React.FC = () => {
       render: (u) => {
         const isTargetAdmin = u.role === 'ADMIN';
         const isSwitching = switchingUserId === u.userId;
+        const isSelf = isSelfUser(u);
+
+        if (isSelf) {
+          return (
+            <div className="flex items-center gap-2">
+              <span
+                className={cn(
+                  'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-mono font-semibold border',
+                  isTargetAdmin
+                    ? 'bg-blue-500/15 text-blue-300 border-blue-500/30'
+                    : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                )}
+              >
+                {isTargetAdmin ? (
+                  <ShieldCheck className="w-3 h-3 text-blue-400" />
+                ) : (
+                  <UserCheck className="w-3 h-3 text-emerald-400" />
+                )}
+                <span>{u.role}</span>
+              </span>
+              <span
+                className="inline-flex items-center gap-1 px-2 h-7 rounded-lg text-[11px] font-medium text-slate-400 bg-slate-900 border border-slate-800 cursor-not-allowed"
+                title="You cannot change your own role"
+              >
+                <KeyRound className="w-3 h-3" />
+                You (locked)
+              </span>
+            </div>
+          );
+        }
 
         return (
           <div className="flex items-center gap-2">
@@ -428,16 +485,25 @@ export const UsersPage: React.FC = () => {
           >
             <Edit2 className="w-4 h-4" />
           </button>
-          <button
-            onClick={() => {
-              setSelectedUser(u);
-              setIsDeleteOpen(true);
-            }}
-            className="p-1.5 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-950/50 transition-colors"
-            title="Revoke / Delete User Account"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
+          {isSelfUser(u) ? (
+            <span
+              className="p-1.5 rounded-lg text-slate-600 cursor-not-allowed"
+              title="You cannot revoke your own account"
+            >
+              <Trash2 className="w-4 h-4" />
+            </span>
+          ) : (
+            <button
+              onClick={() => {
+                setSelectedUser(u);
+                setIsDeleteOpen(true);
+              }}
+              className="p-1.5 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-950/50 transition-colors"
+              title="Revoke / Delete User Account"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
         </div>
       ),
     },
@@ -710,6 +776,8 @@ export const UsersPage: React.FC = () => {
                 { label: 'ADMIN (Full System Access)', value: 'ADMIN' },
                 { label: 'EMPLOYEE (Employee Portal Self-Service)', value: 'EMPLOYEE' },
               ]}
+              disabled={isEditingSelf}
+              helperText={isEditingSelf ? 'You cannot change your own role.' : undefined}
               required
             />
             <Select
@@ -721,6 +789,8 @@ export const UsersPage: React.FC = () => {
                 { label: 'Inactive', value: 'INACTIVE' },
                 { label: 'Suspended', value: 'SUSPENDED' },
               ]}
+              disabled={isEditingSelf}
+              helperText={isEditingSelf ? 'You cannot change your own status.' : undefined}
               required
             />
           </div>
